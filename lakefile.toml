@@ -1,0 +1,26 @@
+name = "ritsuryo"
+version = "0.1.0"
+defaultTargets = ["Ritsuryo", "ritsuryo"]
+testDriver = "tests"
+
+[leanOptions]
+autoImplicit = false
+
+[[lean_lib]]
+name = "Ritsuryo"
+
+[[lean_exe]]
+name = "ritsuryo"
+root = "Main"
+
+[[lean_lib]]
+name = "Tests"
+globs = ["Tests.+"]
+
+[[lean_exe]]
+name = "tests"
+root = "TestMain"
+
+[[lean_exe]]
+name = "basis-report"
+root = "BasisReport"
