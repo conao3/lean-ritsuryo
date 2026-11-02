@@ -26,3 +26,7 @@ public import Ritsuryo.Holiday.Data.Generated
 public import Ritsuryo.Holiday.Lookup
 public import Ritsuryo.Holiday.Proofs
 public import Ritsuryo.Holiday.Check
+public import Ritsuryo.Cli.Json
+public import Ritsuryo.Cli.Core
+public import Ritsuryo.Cli.Render
+public import Ritsuryo.Cli.Commands

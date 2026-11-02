@@ -1,0 +1,106 @@
+module
+
+public import Ritsuryo.Cli.Json
+
+public section
+
+namespace Ritsuryo.Cli
+
+def charWidth (c : Char) : Nat :=
+  let n := c.toNat
+  if (0x1100 ≤ n && n ≤ 0x115F) || (0x2E80 ≤ n && n ≤ 0xA4CF) || (0xAC00 ≤ n && n ≤ 0xD7A3) ||
+      (0xF900 ≤ n && n ≤ 0xFAFF) || (0xFE30 ≤ n && n ≤ 0xFE4F) || (0xFF00 ≤ n && n ≤ 0xFF60) ||
+      (0xFFE0 ≤ n && n ≤ 0xFFE6) || 0x20000 ≤ n then 2
+  else 1
+
+def displayWidth (s : String) : Nat :=
+  s.foldl (fun acc c => acc + charWidth c) 0
+
+def padRight (s : String) (w : Nat) : String :=
+  s.pushn ' ' (w - displayWidth s)
+
+def center (s : String) (w : Nat) : String :=
+  let gap := w - displayWidth s
+  ("".pushn ' ' (gap / 2)) ++ s ++ ("".pushn ' ' (gap - gap / 2))
+
+partial def textLines (prefix? : Option String) (j : Json) : List String :=
+  let withPrefix (cells : List String) : String :=
+    "\t".intercalate (match prefix? with | some p => p :: cells | none => cells)
+  match j with
+  | .obj fields =>
+    let scalars := fields.toList.filter (·.2.isScalar)
+    let head := if scalars.isEmpty then [] else [withPrefix (scalars.map (·.2.scalarText))]
+    let nested := fields.toList.filter (!·.2.isScalar)
+    head ++ nested.flatMap fun (k, v) => textLines (some k.toUpper) v
+  | .arr xs =>
+    if xs.all (·.isScalar) then
+      if xs.isEmpty then [] else [withPrefix (xs.toList.map (·.scalarText))]
+    else xs.toList.flatMap (textLines prefix?)
+  | v => [withPrefix [v.scalarText]]
+
+def renderText (j : Json) : String :=
+  "\n".intercalate (textLines none j) ++ "\n"
+
+def frame (title : String) (body : List String) (width : Nat) : List String :=
+  let inner := width - 2
+  let rule := "+" ++ "".pushn '-' inner ++ "+"
+  [rule, "|" ++ center title inner ++ "|", rule] ++ body.map (fun l => "|" ++ l ++ "|") ++ [rule]
+
+def columnsOf (xs : Array Json) : Option (List String) :=
+  match (xs[0]? : Option Json) with
+  | some (.obj fields) =>
+    let keys := fields.toList.map (·.1)
+    if xs.all fun
+        | .obj fs => fs.toList.map (·.1) == keys && fs.all (·.2.isScalar)
+        | _ => false
+    then some keys else none
+  | _ => none
+
+partial def tableLines (title : String) (j : Json) (minWidth : Nat := 0) : List String :=
+  match j with
+  | .obj fields =>
+    let scalars := fields.toList.filter (·.2.isScalar)
+    let nested := fields.toList.filter (!·.2.isScalar)
+    let keyW := scalars.foldl (fun w (k, _) => max w (displayWidth k)) 0
+    let valW := scalars.foldl (fun w (_, v) => max w (displayWidth v.scalarText)) 0
+    let rowW := if scalars.isEmpty then 0 else keyW + valW + 7
+    let subs := nested.map fun (k, v) => tableLines k v
+    let subW := subs.foldl (fun w ls => max w (ls.headD "").length) 0
+    let width := [minWidth, rowW + 2, subW + 2, displayWidth title + 6].foldl max 0
+    let inner := width - 2
+    let valW' := inner - keyW - 7
+    let rows := scalars.map fun (k, v) =>
+      "  " ++ padRight k keyW ++ " | " ++ padRight v.scalarText valW' ++ "  "
+    let subs := nested.map fun (k, v) => tableLines k v inner
+    frame title (rows ++ subs.flatten) width
+  | .arr xs =>
+    if xs.all (·.isScalar) then
+      let w := xs.foldl (fun w v => max w (displayWidth v.scalarText)) 0
+      let width := [minWidth, w + 6, displayWidth title + 6].foldl max 0
+      frame title (xs.toList.map fun v => "  " ++ padRight v.scalarText (width - 6) ++ "  ") width
+    else
+      match columnsOf xs with
+      | some keys =>
+        let cell (x : Json) (k : String) : String := ((x.get? k).map (·.scalarText)).getD ""
+        let widths := keys.map fun k =>
+          xs.foldl (fun w x => max w (displayWidth (cell x k))) (displayWidth k)
+        let natural := widths.foldl (fun acc w => acc + w + 3) 1
+        let width := [minWidth, natural + 2, displayWidth title + 6].foldl max 0
+        let extra := width - 2 - natural
+        let widths := match widths.reverse with
+          | last :: rest => ((last + extra) :: rest).reverse
+          | [] => []
+        let row (cells : List String) : String :=
+          "  " ++ " | ".intercalate ((cells.zip widths).map fun (c, w) => padRight c w) ++ "  "
+        let sep := "+" ++ "".pushn '-' (width - 4) ++ "+"
+        frame title ([row keys, sep] ++ xs.toList.map fun x => row (keys.map (cell x))) width
+      | none =>
+        let subs := xs.toList.map fun x => tableLines title x minWidth
+        let width := subs.foldl (fun w ls => max w (ls.headD "").length) minWidth
+        (xs.toList.map fun x => tableLines title x width).flatten
+  | v => tableLines title (.obj #[("Value", v)]) minWidth
+
+def renderTable (title : String) (j : Json) : String :=
+  "\n".intercalate (tableLines title j) ++ "\n"
+
+end Ritsuryo.Cli
