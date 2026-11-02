@@ -1,0 +1,27 @@
+name: Holiday data
+
+on:
+  schedule:
+    - cron: "0 0 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+      - run: nix develop --command make fetch-holidays
+      - run: nix develop --command make basis
+      - run: nix develop --command make check
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: holiday-data
+          commit-message: Update the Cabinet Office holiday CSV
+          title: Update the Cabinet Office holiday CSV
+          body: |
+            The monthly job downloaded https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv and regenerated `Ritsuryo/Holiday/Data/Generated.lean`. `make check` passed on the new data, including the HOL-C1 check that the 休日 rows follow from 国民の祝日に関する法律 第3条.
