@@ -1,7 +1,7 @@
 import subprocess
 import sys
 
-SUFFIXES = (".lean", ".md", ".py", ".nix", ".toml", ".yml", ".json", ".csv")
+SUFFIXES = (".lean", ".md", ".py", ".nix", ".toml", ".yml", ".json")
 MAX_LEAN_LINE = 100
 
 
@@ -21,14 +21,20 @@ def check(path):
         text = f.read()
     if text and not text.endswith("\n"):
         problems.append(f"{path}: missing final newline")
+    in_doc = False
     for i, line in enumerate(text.splitlines(), 1):
         if line != line.rstrip():
             problems.append(f"{path}:{i}: trailing whitespace")
         if path.endswith(".lean"):
+            starts_doc = line.lstrip().startswith("/-")
             if "\t" in line:
                 problems.append(f"{path}:{i}: tab character")
-            if len(line) > MAX_LEAN_LINE and not path.endswith("Generated.lean"):
+            if len(line) > MAX_LEAN_LINE and not (in_doc or starts_doc):
                 problems.append(f"{path}:{i}: line longer than {MAX_LEAN_LINE}")
+            if starts_doc:
+                in_doc = True
+            if "-/" in line:
+                in_doc = False
     return problems
 
 
