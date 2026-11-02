@@ -7,7 +7,7 @@ namespace Ritsuryo.Audit
 open Lean Elab Term Meta
 
 def requiredProofIds : List String :=
-  []
+  ["CAL-1", "CAL-2", "CAL-3", "CAL-4", "CAL-5", "CAL-6"]
 
 def allowedAxioms : List Name :=
   [``propext, ``Classical.choice, ``Quot.sound]
