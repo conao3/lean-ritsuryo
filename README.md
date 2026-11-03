@@ -1,6 +1,27 @@
-# lean-ritsuryo
+<p align="center">
+  <img src="docs/assets/banner.png" alt="lean-ritsuryo — Japanese statutory computation, with proofs" width="880">
+</p>
 
-[日本語](README-ja.md)
+<p align="center"><strong>Japanese statutory computation, with proofs</strong></p>
+
+<p align="center">
+  <a href="https://github.com/conao3/lean-ritsuryo/releases/latest"><img src="https://img.shields.io/github/v/release/conao3/lean-ritsuryo" alt="Latest release"></a>
+  <a href="https://github.com/conao3/lean-ritsuryo/actions/workflows/ci.yml"><img src="https://github.com/conao3/lean-ritsuryo/actions/workflows/ci.yml/badge.svg?branch=master" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/conao3/lean-ritsuryo" alt="License: Apache-2.0"></a>
+  <a href="lean-toolchain"><img src="https://img.shields.io/badge/Lean-v4.35.0-blue" alt="Lean v4.35.0"></a>
+  <a href="https://github.com/conao3/lean-ritsuryo/stargazers"><img src="https://img.shields.io/github/stars/conao3/lean-ritsuryo?style=flat" alt="GitHub stars"></a>
+</p>
+
+<p align="center">
+  <a href="#install">Install</a> ·
+  <a href="https://github.com/conao3/lean-ritsuryo/releases">Releases</a> ·
+  <a href="#examples">Examples</a> ·
+  <a href="docs/basis.md">Basis</a> ·
+  <a href="docs/interpretation.md">Interpretation</a> ·
+  <a href="README-ja.md">日本語</a>
+</p>
+
+# lean-ritsuryo
 
 lean-ritsuryo is a library and CLI that computes periods and taxes under Japanese law, written in Lean 4. The library's functions come with proofs that they compute what the provisions say, and the CLI computes by calling them. The Lake package and the CLI are both named `ritsuryo`.
 

@@ -1,6 +1,27 @@
-# lean-ritsuryo
+<p align="center">
+  <img src="docs/assets/banner.png" alt="lean-ritsuryo — Japanese statutory computation, with proofs" width="880">
+</p>
 
-[English](README.md)
+<p align="center"><strong>日本の法令の計算を、証明付きで</strong></p>
+
+<p align="center">
+  <a href="https://github.com/conao3/lean-ritsuryo/releases/latest"><img src="https://img.shields.io/github/v/release/conao3/lean-ritsuryo" alt="Latest release"></a>
+  <a href="https://github.com/conao3/lean-ritsuryo/actions/workflows/ci.yml"><img src="https://github.com/conao3/lean-ritsuryo/actions/workflows/ci.yml/badge.svg?branch=master" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/conao3/lean-ritsuryo" alt="License: Apache-2.0"></a>
+  <a href="lean-toolchain"><img src="https://img.shields.io/badge/Lean-v4.35.0-blue" alt="Lean v4.35.0"></a>
+  <a href="https://github.com/conao3/lean-ritsuryo/stargazers"><img src="https://img.shields.io/github/stars/conao3/lean-ritsuryo?style=flat" alt="GitHub stars"></a>
+</p>
+
+<p align="center">
+  <a href="#インストール">インストール</a> ·
+  <a href="https://github.com/conao3/lean-ritsuryo/releases">リリース</a> ·
+  <a href="#使用例">使用例</a> ·
+  <a href="docs/basis.md">条文と定理の対応</a> ·
+  <a href="docs/interpretation.md">条文の読み方</a> ·
+  <a href="README.md">English</a>
+</p>
+
+# lean-ritsuryo
 
 lean-ritsuryo は、日本の法令が定める期間と税額の計算を Lean 4 で実装したライブラリと CLI である。ライブラリの関数には条文どおりに計算することの証明を付けている。CLI もこの関数を呼んで計算する。Lake のパッケージ名と CLI の名前はどちらも `ritsuryo` である。
 
