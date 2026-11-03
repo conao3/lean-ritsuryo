@@ -11,6 +11,17 @@ public import Ritsuryo.Holiday.Lookup
 # 期間・年齢・祝日のサブコマンド
 
 `period`、`age`、`holiday`、`deadline` の各サブコマンドの実行関数と、そのコマンド表。
+
+- `period compute-expiry`: 民法第140条〜第143条（`--rule civil`）または国税通則法第10条第1項
+  （`--rule national-tax-general`）で期間の末日を求め、`--rollover-rule` があれば休日の繰り下げをする。
+- `period compute-rollover`: 民法第142条、民事訴訟法第95条第3項、国税通則法第10条第2項による繰り下げ。
+- `age get-attainment-date`・`age compute-age`: 年齢計算ニ関スル法律による年齢。
+- `holiday list-holidays`・`holiday check-holiday`: 祝日法第2条・第3条の休日と、その区分。
+- `deadline`: 個別の法律が定める期間（控訴・上告・即時抗告の期間、所得税の確定申告の期限）。
+
+計算そのものは `Ritsuryo.Period` と `Ritsuryo.Holiday` の関数（証明のついたもの）を呼び、このファイルでは
+引数の読み取りと、`Steps`・`Basis`・`Assumptions`・`Data` の組み立てだけをする。
+祝日データ（内閣府の CSV）の範囲の外で国民の祝日が要るときは、終了コード 254 にする。
 -/
 
 public section
@@ -19,12 +30,15 @@ namespace Ritsuryo.Cli
 
 open Ritsuryo.Period
 
+/-- `--holiday-classes` に渡せる休日の区分の名前。 -/
 def holidayClassValues : List String :=
   HolidayClass.all.map HolidayClass.name
 
+/-- `--rollover-rule` に渡せる繰り下げの規則の名前。 -/
 def rolloverRuleValues : List String :=
   ["none", "civil-142", "civil-procedure-95", "national-tax-10"]
 
+/-- 繰り下げに関するパラメータ。`required` のときは `--rollover-rule` を必須にし、`none` を選べなくする。 -/
 def rolloverParams (required : Bool) : List Param := [
   { name := "rollover-rule"
     type := .enum (if required then rolloverRuleValues.drop 1 else rolloverRuleValues)
@@ -42,6 +56,7 @@ def rolloverParams (required : Bool) : List Param := [
     type := .flag
     help := "national-tax-10 で 1月2日・3日を「一般の休日」とする（既定は true。国税通則法基本通達第10条関係4）" }]
 
+/-- `--rollover-rule` の名前と関連するパラメータから、繰り下げの規則を作る。`none` なら繰り下げない。 -/
 def rolloverRuleOf (a : Args) (name : String) : Except CliError (Option RolloverRule) := do
   let classes ← match a.strs? "HolidayClasses" with
     | some xs => pure (xs.filterMap HolidayClass.ofName?)
@@ -53,11 +68,13 @@ def rolloverRuleOf (a : Args) (name : String) : Except CliError (Option Rollover
   | "national-tax-10" => pure (some (.nationalTax10 (a.flag "NewYearGeneralHoliday" true)))
   | other => throw (usageError s!"--rollover-rule {other} はない")
 
+/-- 繰り下げの規則の根拠条文。 -/
 def ruleBasis : RolloverRule → List (String × String)
   | .civil142 .. => [("民法", "第142条")]
   | .civilProcedure95 => [("民事訴訟法", "第95条第1項"), ("民事訴訟法", "第95条第3項")]
   | .nationalTax10 _ => [("国税通則法", "第10条第2項"), ("国税通則法施行令", "第2条第2項")]
 
+/-- 繰り下げの規則が前提にする解釈と、利用者が選んだ前提。`Assumptions` に入れる。 -/
 def ruleAssumptions : RolloverRule → List String
   | .civil142 classes custom =>
     if custom then
@@ -69,9 +86,11 @@ def ruleAssumptions : RolloverRule → List String
     if general then ["1月2日・3日を国税通則法第10条第2項の「一般の休日」とする（国税通則法基本通達第10条関係4）"]
     else ["1月2日・3日を国税通則法第10条第2項の「一般の休日」としない"]
 
+/-- 祝日データを使ったときに `Assumptions` に入れる前提（`docs/interpretation.md` の祝日法の読み方）。 -/
 def nationalHolidayAssumption : String :=
   "内閣府の祝日 CSV の日（特例法による休日を含む）を国民の祝日に関する法律に規定する休日として扱う"
 
+/-- 繰り下げで飛ばした 1 日の `RolledOverDays` の要素。規則が休日とする区分のうち当たるものと、祝日の名称。 -/
 def skippedDay (rule : RolloverRule) (d : Date) : Json :=
   let classes := (rule.classesOf.filter (HolidayClass.holds Holiday.isHoliday d ·)).map
     HolidayClass.name
@@ -80,6 +99,8 @@ def skippedDay (rule : RolloverRule) (d : Date) : Json :=
       | some e => .str e.name
       | none => .null)]
 
+/-- `d` を規則で繰り下げ、繰り下げた日と、飛ばした日の一覧を返す。
+規則が国民の祝日を使うときは、`d` と繰り下げた日が祝日データの範囲にあることを確かめる（範囲外は終了コード 254）。 -/
 def applyRollover (rule : RolloverRule) (d : Date) : Except CliError (Date × Json) := do
   let uses := rule.classesOf.contains .nationalHoliday
   let some r := rollover (rule.isHoliday Holiday.isHoliday) 366 d
@@ -92,6 +113,7 @@ def applyRollover (rule : RolloverRule) (d : Date) : Except CliError (Date × Js
     skippedDay rule (Date.ofDays (d.toDays + (i : Int)))
   return (r, .arr skipped.toArray)
 
+/-- `--days`・`--weeks`・`--months`・`--years` のちょうど 1 つから期間の長さを読む。 -/
 def lengthOf (a : Args) : Except CliError (String × Length) := do
   let opts := [("Days", Length.days), ("Weeks", Length.weeks), ("Months", Length.months),
     ("Years", Length.years)]
@@ -99,12 +121,14 @@ def lengthOf (a : Args) : Except CliError (String × Length) := do
   | [x] => pure x
   | _ => throw (usageError "--days、--weeks、--months、--years のどれか 1 つを渡す")
 
+/-- 国税通則法第10条第1項の期間の長さにする。同項は週による期間を定めていないので、週は `none`。 -/
 def taxLengthOf : Length → Option TaxLength
   | .days n => some (.days n)
   | .months n => some (.months n)
   | .years n => some (.years n)
   | .weeks _ => none
 
+/-- `period compute-expiry`。期間の末日を求め、`--rollover-rule` があれば繰り下げる。 -/
 def computeExpiry (a : Args) : Except CliError Json := do
   let event ← dateArg a "EventDate"
   let (_, len) ← lengthOf a
@@ -140,6 +164,7 @@ def computeExpiry (a : Args) : Except CliError Json := do
       ("ExpiryBeforeRollover", dateJson res.expiry), ("RolledOverDays", skipped)])
     basis assumptions data
 
+/-- `period compute-rollover`。日付を規則で繰り下げる。 -/
 def computeRollover (a : Args) : Except CliError Json := do
   let d ← dateArg a "Date"
   let some rule ← rolloverRuleOf a ((a.str? "RolloverRule").getD "none")
@@ -153,9 +178,11 @@ def computeRollover (a : Args) : Except CliError Json := do
       (if uses then [nationalHolidayAssumption] else []))
     (if uses then holidayDataJson else .null)
 
+/-- 年齢の計算の根拠条文。年齢計算ニ関スル法律と、応当日のない月の末日を決める民法第143条第2項。 -/
 def ageBasis : List (String × String) :=
   [("年齢計算ニ関スル法律", "第1項"), ("年齢計算ニ関スル法律", "第2項"), ("民法", "第143条第2項")]
 
+/-- `age get-attainment-date`。`n` 歳に達する日と、`n` 年後の応当日（なければ null）を出す。 -/
 def getAttainmentDate (a : Args) : Except CliError Json := do
   let birth ← dateArg a "BirthDate"
   let some n := a.nat? "Age" | throw (usageError "--age は必須")
@@ -169,6 +196,7 @@ def getAttainmentDate (a : Args) : Except CliError Json := do
     ["出生日を初日として算入し（年齢計算ニ関スル法律第1項）、n 年後の応当日の前日（応当日がない月はその月の末日）に n 歳に達する（同第2項、民法第143条）"]
     .null
 
+/-- `age compute-age`。`--as-of` の日の終わりの満年齢と、その前後の年齢に達する日を出す。 -/
 def computeAge (a : Args) : Except CliError Json := do
   let birth ← dateArg a "BirthDate"
   let asOf ← dateArg a "AsOf"
@@ -183,6 +211,8 @@ def computeAge (a : Args) : Except CliError Json := do
     ["AsOf の日の終わりの満年齢を出す。n 歳に達する日（AttainmentDate）の当日は n 歳とする"]
     .null
 
+/-- CSV の行の区分（`Class`）と根拠（`Article`）。「休日」の行は、その日に施行されていた第3条第2項の
+振替休日に当たるかで、振替休日と国民の休日に分ける。 -/
 def holidayClassOf (y : Int) (e : Holiday.Entry) : String × String :=
   match e.kind with
   | .national => ("national-holiday", "国民の祝日に関する法律 第2条")
@@ -195,6 +225,7 @@ def holidayClassOf (y : Int) (e : Holiday.Entry) : String × String :=
       ("substitute-holiday", "国民の祝日に関する法律 第3条第2項")
     else ("citizens-holiday", "国民の祝日に関する法律 第3条第3項")
 
+/-- `holiday list-holidays`。`--year` の年の CSV の行を、区分と根拠つきで並べる。 -/
 def listHolidays (a : Args) : Except CliError Json := do
   let some y := a.nat? "Year" | throw (usageError "--year は必須")
   let y : Int := y
@@ -210,6 +241,8 @@ def listHolidays (a : Args) : Except CliError Json := do
     ["休日の行は、施行日に応じた第3条第2項・第3項の規定で振替休日と国民の休日に分ける"]
     holidayDataJson
 
+/-- `holiday check-holiday`。日付が当たる休日の区分と、繰り下げの規則ごとに休日に当たるかを出す。
+民法第142条は、取引をしない慣習があるものとして判定する。 -/
 def checkHoliday (a : Args) : Except CliError Json := do
   let d ← dateArg a "Date"
   if !Holiday.inRange d then
@@ -240,6 +273,7 @@ def checkHoliday (a : Args) : Except CliError Json := do
       [nationalHolidayAssumption])
     holidayDataJson
 
+/-- 出力の雛形の `RolledOverDays`。 -/
 def rolledOverSkeleton : Json :=
   .arr #[.obj #[("Date", .str ""), ("HolidayClasses", .arr #[.str ""]), ("HolidayName", .str "")]]
 
@@ -277,6 +311,7 @@ def getIncomeTaxReturnDeadline (a : Args) : Except CliError Json := do
       nationalHolidayAssumption] ++ ruleAssumptions (.nationalTax10 general))
     holidayDataJson
 
+/-- `deadline` の民事訴訟法の期間のサブコマンドを作る。起算の日のパラメータ名と説明だけが期間ごとに違う。 -/
 def courtDeadlineSubcommand (p : CourtPeriod) (sub help eventParam eventHelp : String) :
     Subcommand :=
   { name := sub
@@ -288,6 +323,7 @@ def courtDeadlineSubcommand (p : CourtPeriod) (sub help eventParam eventHelp : S
         ("ExpiryBeforeRollover", .str ""), ("RolledOverDays", rolledOverSkeleton)])
     run := computeCourtDeadline p (pascalCase eventParam) }
 
+/-- `deadline` コマンドの表。 -/
 def deadlineCommand : Command :=
   { name := "deadline"
     help := "個別の法律が定める期間の期限（控訴・上告・即時抗告・所得税の確定申告）"
@@ -312,6 +348,7 @@ def deadlineCommand : Command :=
             ("RolledOverDays", rolledOverSkeleton)])
         run := getIncomeTaxReturnDeadline }] }
 
+/-- `period`・`age`・`holiday`・`deadline` のコマンドの表。 -/
 def periodCommands : List Command := [
   { name := "period"
     help := "期間の満了日と、末日が休日のときの繰り下げ"

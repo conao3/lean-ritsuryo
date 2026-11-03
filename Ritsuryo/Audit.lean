@@ -2,10 +2,27 @@ import Lean
 import Ritsuryo.Basis
 import Ritsuryo.Law
 
+/-!
+# 根拠の対応表と監査
+
+`lake exe basis-report`（`BasisReport.lean`）の中身。`@[ritsuryo_basis]`・`@[ritsuryo_proof]` の記録
+（`Ritsuryo.Basis`）と、ライブラリ全体の定数を読み、次の 2 つを作る。
+
+- `renderReport`: 法令ごと・条項ごとに、条文の文言を写した仕様（spec）、CLI が使う実装（impl）、
+  それらについての定理を並べた Markdown の表と、設計の ID ごとの定理と使った公理の表。`docs/basis.md` になる。
+- `audit`: 問題の一覧。`Ritsuryo.Calendar`・`Ritsuryo.Period`・`Ritsuryo.Holiday`・`Ritsuryo.Tax` の配下の定義で
+  `@[ritsuryo_basis]` のないもの、`propext`・`Classical.choice`・`Quot.sound` 以外の公理（`sorryAx` や
+  `native_decide` が持ち込む公理など）に依存する定理、どの定理にも付いていない設計の ID を挙げる。
+
+どちらもコンパイル時に計算する（`ritsuryo_basis_report%`・`ritsuryo_audit%` の項が文字列とリストに展開される）。
+このファイルは `Lean` 本体を読み込むので、ライブラリ（`Ritsuryo`）には入れず、`basis-report` の実行ファイルだけが使う。
+-/
+
 namespace Ritsuryo.Audit
 
 open Lean Elab Term Meta
 
+/-- 設計で定めた性質の ID。どれも 1 つ以上の定理に `@[ritsuryo_proof]` で付いていなければならない。 -/
 def requiredProofIds : List String :=
   ["CAL-1", "CAL-2", "CAL-3", "CAL-4", "CAL-5", "CAL-6",
    "PER-1", "PER-2", "PER-3", "PER-4", "PER-5", "PER-6", "PER-7",
@@ -13,24 +30,30 @@ def requiredProofIds : List String :=
    "TAX-1", "TAX-2", "TAX-3", "TAX-4", "TAX-5", "RND-1", "RND-2", "CON-1", "CON-2",
    "DEL-1", "DEL-2", "PEN-1", "INH-1"]
 
+/-- 定理が依存してよい公理。Lean の標準的な古典論理の 3 つに限る。 -/
 def allowedAxioms : List Name :=
   [``propext, ``Classical.choice, ``Quot.sound]
 
+/-- `@[ritsuryo_basis]` を必須にするモジュールの接頭辞。この配下の公開された定義はすべて条文の根拠を持つ。 -/
 def basisModulePrefixes : List Name :=
   [`Ritsuryo.Calendar, `Ritsuryo.Period, `Ritsuryo.Holiday, `Ritsuryo.Tax]
 
+/-- 構造体や帰納型を定義したときに Lean が自動で作る補助定義の名前の末尾。監査の対象から外す。 -/
 def generatedSuffixes : List String :=
   ["toCtorIdx", "ctorIdx", "noConfusionType", "noConfusion", "ofNat", "ctorElim", "ctorElimType"]
 
+/-- 宣言を定義したモジュールの名前。現在のファイルで定義した宣言には `none` を返す。 -/
 def moduleOf? (env : Environment) (decl : Name) : Option Name := do
   let idx ← env.getModuleIdxFor? decl
   env.header.moduleNames[idx.toNat]?
 
+/-- 宣言が `Ritsuryo` の配下のモジュール（このファイル自身を除く）で定義されたかどうか。 -/
 def inRitsuryo (env : Environment) (decl : Name) : Bool :=
   match moduleOf? env decl with
   | some m => (`Ritsuryo).isPrefixOf m && m != `Ritsuryo.Audit
   | none => false
 
+/-- 宣言が自動生成されたもの（非公開名、内部名、インスタンス、`match` の補助関数、再帰子、射影など）かどうか。 -/
 def isGenerated (env : Environment) (decl : Name) : Bool :=
   isPrivateName decl || decl.isInternalDetail || isInstanceCore env decl ||
     isInstanceCore env decl.getPrefix || isMatcherCore env decl || isAuxRecursor env decl ||
@@ -39,14 +62,20 @@ def isGenerated (env : Environment) (decl : Name) : Bool :=
      | .str _ s => generatedSuffixes.contains s
      | _ => false)
 
+/-- `Ritsuryo` の配下で人が書いた宣言をすべて集める。 -/
 def ritsuryoConstants (env : Environment) : Array (Name × ConstantInfo) :=
   env.constants.fold (init := #[]) fun acc n c =>
     if inRitsuryo env n && !isGenerated env n then acc.push (n, c) else acc
 
+/-- 条項の文字列から数字の並びを取り出して並べ替えの鍵にする。「第143条第2項」は `[143, 2]`、
+「本則」は `[]` になり、条項は条・項の番号順に並ぶ。 -/
 def articleKey (s : String) : List Nat :=
   let digits := s.toList.splitBy (fun a b => a.isDigit == b.isDigit)
   digits.filterMap fun cs => if cs.all Char.isDigit then (String.ofList cs).toNat? else none
 
+/-- 宣言の種類を対応表の列に振り分ける。定理は `theorem`、
+モジュールの名前に `Spec` を含むか宣言の名前に `Spec` を含む定義は `spec`（条文の文言を写した仕様）、
+それ以外の定義は `impl`（CLI が使う実装）になる。 -/
 def kindOf (env : Environment) (decl : Name) : String :=
   match env.find? decl with
   | some (.thmInfo _) => "theorem"
@@ -56,13 +85,18 @@ def kindOf (env : Environment) (decl : Name) : String :=
         then "spec" else "impl"
     | none => "impl"
 
+/-- 名前を Markdown のコード表記（バッククォートで囲む）にする。 -/
 def code (n : Name) : String :=
   "`" ++ n.toString ++ "`"
 
+/-- 設計の ID（`CAL-1`、`HOL-C2` など）の並べ替えの鍵。接頭辞を決まった順の番号にし、検査（`-C`）を証明の後に回し、その後に数字を続ける。 -/
 def idKey (id : String) : List Nat :=
   let prefixes := ["CAL", "PER", "AGE", "ROL", "HOL", "TAX", "RND", "CON", "DEL", "PEN", "INH"]
-  prefixes.idxOf (id.takeWhile (· != '-')).toString :: articleKey id
+  let check := if (id.splitOn "-C").length > 1 then 1 else 0
+  prefixes.idxOf (id.takeWhile (· != '-')).toString :: check :: articleKey id
 
+/-- `docs/basis.md` の本文を作る。`laws` の順に法令ごとの節を立て、条項ごとに仕様・実装・定理を 1 行に並べる。
+最後に設計の ID ごとに定理と、その定理が依存する公理を並べる。 -/
 def renderReport : MetaM String := do
   let env ← getEnv
   let entries := basisEntries env
@@ -92,13 +126,15 @@ def renderReport : MetaM String := do
       out := out ++ s!"| {article} | {cell (pick "spec") code} | {cell (pick "impl") code} | " ++
         s!"{cell (pick "theorem") thm} |\n"
   out := out ++ "\n## Proved properties\n\n| ID | Theorem | Axioms |\n|---|---|---|\n"
-  let sorted := ids.qsort fun a b => idKey a.2 < idKey b.2
+  let sorted := ids.qsort fun a b =>
+    idKey a.2 < idKey b.2 || (idKey a.2 == idKey b.2 && a.1.toString < b.1.toString)
   for (n, id) in sorted do
     let axioms ← collectAxioms n
     let axioms := (axioms.map toString).qsort (· < ·)
     out := out ++ s!"| {id} | {code n} | {", ".intercalate axioms.toList} |\n"
   return out
 
+/-- 監査で見つかった問題を文字列のリストで返す。空なら問題はない。 -/
 def audit : MetaM (List String) := do
   let env ← getEnv
   let mut problems : Array String := #[]
@@ -119,9 +155,11 @@ def audit : MetaM (List String) := do
       problems := problems.push s!"no theorem tagged @[ritsuryo_proof \"{id}\"]"
   return problems.toList
 
+/-- `renderReport` の結果をコンパイル時に計算して文字列リテラルにする項。 -/
 elab "ritsuryo_basis_report%" : term => do
   return mkStrLit (← renderReport)
 
+/-- `audit` の結果をコンパイル時に計算して文字列のリストにする項。 -/
 elab "ritsuryo_audit%" : term => do
   return toExpr (← audit)
 

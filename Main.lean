@@ -4,16 +4,29 @@ import Ritsuryo.Cli.Commands
 import Ritsuryo.Cli.Render
 import Ritsuryo.Cli.Query
 
+/-!
+# `ritsuryo` の入口
+
+引数をコマンド表（`Ritsuryo.Cli.commands`）で解析し、バージョン・`help`・雛形を出すか、サブコマンドを実行する。
+実行の結果は `--query` の JMESPath で絞り込み、`--output` の形式で標準出力に出す。
+
+終了コードは、0 が成功、252 がコマンドやパラメータの誤り（`--query` の式の誤りを含む）、254 が計算の扱う範囲の外の入力、
+255 がそれ以外の失敗（ファイルを読めないなど）になる。誤りは `ritsuryo: error: ...` の形で標準エラーに出す。
+-/
+
 open Ritsuryo.Cli
 
-def version : String := "0.1.0"
+/-- `ritsuryo --version` で出すバージョン。 -/
+def version : String := "0.5.0"
 
+/-- 出力の JSON を `--output` の形式の文字列にする。`title` は `table` の題。 -/
 def render (fmt : OutputFormat) (title : String) (j : Json) : String :=
   match fmt with
   | .json => Json.pretty j ++ "\n"
   | .text => renderText j
   | .table => renderTable title j
 
+/-- 引数を解析して実行し、終了コードを返す。 -/
 def run (argv : List String) : IO UInt32 := do
   match ← parse commands argv with
   | .error e =>
@@ -28,6 +41,7 @@ def run (argv : List String) : IO UInt32 := do
       IO.print (topHelp commands)
       return 0
     | .help (c :: rest) =>
+      -- 名前は parse で確かめてあるので、ここで見つからないことはない。
       match commands.find? (·.name == c) with
       | none => return 252
       | some cmd =>
@@ -65,6 +79,7 @@ def run (argv : List String) : IO UInt32 := do
         IO.eprintln s!"ritsuryo: error: {e.message}"
         return e.code
 
+/-- CLI の入口。`run` の外で起きた例外（ファイルを読めないなど）は終了コード 255 にする。 -/
 public def main (argv : List String) : IO UInt32 := do
   try
     run argv

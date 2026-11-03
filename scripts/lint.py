@@ -1,3 +1,9 @@
+"""リポジトリのファイルの書式を検査する。
+
+git が追跡するファイル（と追跡前の新しいファイル）について、末尾の改行、行末の空白を検査し、
+Lean のファイルではタブ文字と、ドキュメントコメントの外で 100 文字を超える行も検査する。
+"""
+
 import subprocess
 import sys
 
@@ -6,6 +12,7 @@ MAX_LEAN_LINE = 100
 
 
 def tracked_files():
+    """検査するファイル。git の追跡下と、.gitignore に当たらない未追跡のファイルのうち、対象の拡張子のもの。"""
     out = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
         check=True,
@@ -16,6 +23,7 @@ def tracked_files():
 
 
 def check(path):
+    """1 つのファイルの問題を「パス:行: 内容」の文字列の並びで返す。"""
     problems = []
     with open(path, encoding="utf-8") as f:
         text = f.read()
@@ -39,6 +47,7 @@ def check(path):
 
 
 def main():
+    """全ファイルを検査して問題を標準エラーに出し、問題があれば 1 を返す。"""
     problems = [p for f in tracked_files() for p in check(f)]
     for p in problems:
         print(p, file=sys.stderr)

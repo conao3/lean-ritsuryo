@@ -1,15 +1,30 @@
 module
 
+/-!
+# 参照する法令の一覧
+
+このライブラリが `@[ritsuryo_basis]` で参照する法令を、名前・e-Gov の法令 ID・法令番号の組で並べる。
+`@[ritsuryo_basis]` の法令名はここにあるものに限られ（`Ritsuryo.Basis`）、`docs/basis.md` の法令ごとの節は
+この並び順で出る。
+
+e-Gov の法令 ID は、先頭の 3 桁が元号と年（1 桁目が元号で 1 は明治、3 は昭和、4 は平成、5 は令和。
+例: `129` は明治29年）、続く 2 文字が法令の種別（`AC` は法律、`CO` は政令、`IO` は勅令、`DF` は太政官布告）、
+残りが番号になる。条文は `https://laws.e-gov.go.jp/law/{法令 ID}` で読める。
+-/
+
 @[expose] public section
 
 namespace Ritsuryo
 
+/-- 法令 1 件。`name` は `@[ritsuryo_basis]` に書く名前、`lawId` は e-Gov の法令 ID、
+`lawNum` は法令番号（「明治二十九年法律第八十九号」など）。 -/
 structure Law where
   name : String
   lawId : String
   lawNum : String
   deriving Inhabited, Repr
 
+/-- 参照する法令の一覧。法令を新しく参照するときはここに足す。 -/
 def laws : List Law := [
   ⟨"民法", "129AC0000000089", "明治二十九年法律第八十九号"⟩,
   ⟨"年齢計算ニ関スル法律", "135AC1000000050", "明治三十五年法律第五十号"⟩,
@@ -38,6 +53,7 @@ def laws : List Law := [
   ⟨"閏年ニ関スル件", "131IO0000000090", "明治三十一年勅令第九十号"⟩
 ]
 
+/-- 名前で法令を探す。 -/
 def Law.find? (name : String) : Option Law :=
   laws.find? (·.name == name)
 

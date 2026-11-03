@@ -1,3 +1,12 @@
+"""ビルドした ritsuryo の CLI を実行して、出力と終了コードを確かめる。
+
+使い方: python3 scripts/test_cli.py <ritsuryo の実行ファイルのパス>
+
+CASES の各行は、名前、引数、期待する終了コード、出力の JSON のパス（Result.ExpiryDate など）と期待する値。
+そのほか --cli-input-json と file:// の読み込み、--query、--generate-cli-skeleton、
+--output text・table、help、--version を個別に確かめる。
+"""
+
 import json
 import pathlib
 import subprocess
@@ -208,18 +217,21 @@ CASES = [
 
 
 def run(args, cwd=None):
+    """CLI を引数 args で実行し、標準出力・標準エラー・終了コードを返す。"""
     return subprocess.run(
         [str(BIN), *args], capture_output=True, text=True, cwd=cwd, check=False
     )
 
 
 def lookup(obj, path):
+    """出力の JSON から、ドットでつないだキーのパスの値を取る。"""
     for key in path.split("."):
         obj = obj[key]
     return obj
 
 
 def main():
+    """すべてのケースを実行して結果を出し、失敗があれば 1 を返す。"""
     if BIN is None:
         sys.exit("usage: test_cli.py <path to ritsuryo>")
     failures = []
@@ -345,7 +357,7 @@ def main():
         p = run(path)
         if p.returncode != 0 or not p.stdout:
             failures.append(f"{' '.join(path)}: exit {p.returncode}")
-    total = len(CASES) + len(checks) + 7
+    total = len(CASES) + len(checks) + len(queries) + 9
     for f in failures:
         print(f"  FAIL {f}", file=sys.stderr)
     print(f"cli: {total - len(failures)} passed, {len(failures)} failed")

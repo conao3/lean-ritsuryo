@@ -4,12 +4,28 @@ public import Ritsuryo.Period.Rollover
 public import Ritsuryo.Period.Proofs.Lemmas
 meta import Ritsuryo.Basis
 
+/-!
+# 繰り下げの証明（ROL-1〜ROL-3）
+
+- ROL-1（`rol1_least_non_holiday`）: `rollover` の結果は、もとの日以後で休日でない最初の日になる。
+  三つの規定の「その翌日に満了する」を、翌日も休日なら休日でない日まで送ると読む計算が、その読み方どおりであることを示す。
+- ROL-2（`rol2_idempotent_monotone`）: 繰り下げた日をもう一度繰り下げても動かず、もとの日について単調で、
+  休日の集合を広げると結果は遅くなるか同じになる。
+- ROL-3（`rol3_procedure_vs_tax`）: 1月2日・1月3日を一般の休日に含めると、国税通則法第10条第2項の休日の集合は
+  民事訴訟法第95条第3項の集合と一致する。含めないときも、1月2日・1月3日以外の日では一致する。
+
+ROL-1 と ROL-2 は、通算日の上の `rolloverDays` について燃料（`fuel`）の帰納法で示した `rolloverDays_spec` から導く。
+ROL-3 は、各休日の種類に当たるかの真偽をすべて場合分けして確かめる。
+-/
+
 public section
 
 namespace Ritsuryo.Period
 
 open Date
 
+/-- `rolloverDays` が `z'` を返したなら、`z ≤ z'` で、`z'` は休日でなく、`z` 以上 `z'` 未満の通算日はすべて休日。
+`fuel` についての帰納法で、`z` が休日なら `z + 1` からの結果に帰着させ、休日でなければ `z' = z` になる。 -/
 theorem rolloverDays_spec (H : Int → Bool) (fuel : Nat) (z z' : Int)
     (h : rolloverDays H fuel z = some z') :
     z ≤ z' ∧ H z' = false ∧ ∀ x, z ≤ x → x < z' → H x = true := by
@@ -30,6 +46,9 @@ theorem rolloverDays_spec (H : Int → Bool) (fuel : Nat) (z z' : Int)
       subst h
       exact ⟨Int.le_refl _, by simpa using hz, fun x hx1 hx2 => by omega⟩
 
+/-- ROL-1: `rollover` が `d'` を返したなら、`d'` は `d` 以後の有効な日付で休日でなく、`d` から `d'` の前日までの
+有効な日付はすべて休日。つまり `d'` は `d` 以後で休日でない最初の日になる。
+日付を通算日に移して `rolloverDays_spec` を当て、通算日を日付に戻すと元に戻ること（CAL-1・CAL-2）で日付の主張に直す。 -/
 @[ritsuryo_proof "ROL-1", ritsuryo_basis "民法" "第142条",
   ritsuryo_basis "民事訴訟法" "第95条第3項", ritsuryo_basis "国税通則法" "第10条第2項"]
 theorem rol1_least_non_holiday (H : Date → Bool) (fuel : Nat) (d d' : Date)
@@ -45,10 +64,15 @@ theorem rol1_least_non_holiday (H : Date → Bool) (fuel : Nat) (d d' : Date)
   have := h3 (toDays x) a b
   rwa [ofDays_toDays x hx] at this
 
+/-- 休日でない通算日から繰り下げると、燃料が 1 以上ならその通算日のまま動かない。 -/
 theorem rolloverDays_of_not_holiday (H : Int → Bool) (fuel : Nat) (z : Int) (h : H z = false) :
     rolloverDays H (fuel + 1) z = some z := by
   simp [rolloverDays, h]
 
+/-- ROL-2: 通算日の上の繰り下げについて、次の三つが成り立つ。
+繰り下げた結果をもう一度繰り下げても動かない（冪等）。もとの日が遅いほど結果も遅いか同じ（単調）。
+休日の集合 `H` を広げた `H'` で繰り下げると、結果は遅くなるか同じ。
+どれも `rolloverDays_spec` から、結果の順序が逆なら休日でないはずの日が休日になって矛盾する、という形で示す。 -/
 @[ritsuryo_proof "ROL-2", ritsuryo_basis "民法" "第142条",
   ritsuryo_basis "民事訴訟法" "第95条第3項", ritsuryo_basis "国税通則法" "第10条第2項"]
 theorem rol2_idempotent_monotone (H : Int → Bool) (fuel : Nat) :
@@ -74,6 +98,9 @@ theorem rol2_idempotent_monotone (H : Int → Bool) (fuel : Nat) :
       contradiction
     · omega
 
+/-- ROL-3: 1月2日・1月3日を一般の休日に含めると、国税通則法第10条第2項（施行令第2条第2項を含む）の休日の判定は
+民事訴訟法第95条第3項の判定と同じになる。含めるかどうかにかかわらず、1月2日・1月3日でない日では両者は一致する。
+二つの判定は並べ方が違うだけの同じ論理和なので、各種類に当たるかの真偽をすべて場合分けして確かめる。 -/
 @[ritsuryo_proof "ROL-3", ritsuryo_basis "民事訴訟法" "第95条第3項",
   ritsuryo_basis "国税通則法" "第10条第2項", ritsuryo_basis "国税通則法施行令" "第2条第2項"]
 theorem rol3_procedure_vs_tax (national : Date → Bool) (d : Date) :

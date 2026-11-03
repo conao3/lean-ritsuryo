@@ -4,23 +4,40 @@ public import Ritsuryo
 public import Tests.Harness
 public import Tests.Calendar
 
+/-!
+# 期間・年齢・繰り下げ・祝日のテスト
+
+条文の読み方（`docs/interpretation.md`）を具体的な日付で確かめる。
+
+- `civil`: 民法第140条〜第143条の期間の末日（月末に応当日がない場合、閏年、午前零時から始まる期間、週・年）と、
+  国税通則法第10条第1項が民法と同じ末日になる例。
+- `age`: 年齢計算ニ関スル法律による年齢に達する日と満年齢（2 月 29 日生まれ、4 月 1 日生まれなど）。
+- `rolloverExamples`: 民事訴訟法第95条第3項（年末年始、大型連休）、国税通則法第10条第2項（1 月 2 日・3 日の扱い）、
+  民法第142条（取引をしない慣習の有無、土曜日を加えた場合）の繰り下げ。
+- `holiday`: 振替休日・国民の休日・「休日（祝日扱い）」の具体例、第 n 月曜日、CSV の行数と年数と「休日」の行数。
+-/
+
 public section
 
 namespace Ritsuryo.Tests.Period
 
 open Ritsuryo Ritsuryo.Period Ritsuryo.Tests.Calendar
 
+/-- 民法による期間の末日（繰り下げ前）。 -/
 def expiry (e : Date) (mid : Bool) (len : Length) : Date :=
   (compute e mid len).expiry
 
+/-- 祝日 CSV を使って、規則で繰り下げた日。 -/
 def rolled (rule : RolloverRule) (x : Date) : Option Date :=
   rollover (rule.isHoliday Holiday.isHoliday) 366 x
 
+/-- 失敗の説明に出す `Option Date` の文字列。 -/
 instance : ToString (Option Date) where
   toString
     | some x => toString x
     | none => "none"
 
+/-- 民法と国税通則法第10条第1項の期間の末日の例。 -/
 def civil : TestM Unit := do
   checkEq "1 month from 2026-01-30: no 2/31, so the end of February"
     (expiry (d 2026 1 30) false (.months 1)) (d 2026 2 28)
@@ -41,6 +58,7 @@ def civil : TestM Unit := do
   checkEq "national tax 1 month equals the civil result"
     (computeTax (d 2026 1 30) false (.months 1)).expiry (d 2026 2 28)
 
+/-- 年齢計算ニ関スル法律の例。 -/
 def age : TestM Unit := do
   checkEq "born 2008-02-29 attains 18 on 2026-02-28" (Age.attainmentDate (d 2008 2 29) 18)
     (d 2026 2 28)
@@ -56,6 +74,7 @@ def age : TestM Unit := do
   checkEq "born 2000-01-01 is 19 on 2019-12-30" (Age.ageOn (d 2000 1 1) (d 2019 12 30)) 19
   checkEq "on the birth date the age is 0" (Age.ageOn (d 2026 11 2) (d 2026 11 2)) 0
 
+/-- 繰り下げの例。 -/
 def rolloverExamples : TestM Unit := do
   checkEq "民訴 95 条 3 項: 2026-12-29 rolls over the year end to 2027-01-04"
     (rolled .civilProcedure95 (d 2026 12 29)) (some (d 2027 1 4))
@@ -77,6 +96,7 @@ def rolloverExamples : TestM Unit := do
     (rolled (.civil142 [.sunday, .saturday, .nationalHoliday] true) (d 2026 11 21))
     (some (d 2026 11 24))
 
+/-- 祝日の表と第2条・第3条の例。 -/
 def holiday : TestM Unit := do
   check "2026-05-06 is a holiday (振替休日)" (Holiday.isHoliday (d 2026 5 6))
   check "2026-09-22 is a holiday (国民の休日)" (Holiday.isHoliday (d 2026 9 22))
@@ -91,6 +111,7 @@ def holiday : TestM Unit := do
     (fun n (i : Nat) => n + (Holiday.restDays (1955 + (i : Int))).length) 0
   checkEq "休日 rows" rest 116
 
+/-- 期間・年齢・繰り下げ・祝日のテストのスイート。 -/
 def suites : List (String × TestM Unit) :=
   [("民法 examples", civil), ("年齢計算 examples", age), ("繰り下げ examples", rolloverExamples),
     ("祝日 examples", holiday)]

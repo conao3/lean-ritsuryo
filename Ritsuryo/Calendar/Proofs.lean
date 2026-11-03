@@ -4,10 +4,33 @@ public import Ritsuryo.Calendar.Arith
 public import Ritsuryo.Calendar.Weekday
 meta import Ritsuryo.Basis
 
+/-!
+# 暦の証明（CAL-1〜CAL-6）
+
+日付と 1970-01-01 からの日数（`Ritsuryo.Calendar.Days`）の対応について、期間計算や祝日の証明が前提にする
+性質を証明する。ファイルの末尾に、設計の ID を付けた定理 `cal1_ofDays_toDays`〜`cal6_daysInMonth` を置き、
+それより前の定理はその材料になる。
+
+- CAL-1・CAL-2: `toDays` と `ofDays` は互いに逆で、実在する日付と整数が 1 対 1 に対応する。
+- CAL-3: 日付の辞書式の前後と、日数の大小が一致する。
+- CAL-4: 月末・年末で繰り上がる素朴な翌日 `nextDate` は、日数で 1 進めた日と同じになる。
+- CAL-5: 曜日は日数を 7 で割った余りで決まり、翌日の曜日は次の曜日になる。
+- CAL-6: 各月の日数は、翌月 1 日との日数の差と一致し、2 月が 29 日になるのは閏年ニ関スル件の文言
+  （皇紀で判定する `IsLeapYearSpec`）で閏年になる年に限る。
+
+証明は、月の 12 通りの場合分けと `Ritsuryo.Calendar.Arith` の補題を組み合わせ、
+残りを `omega` で閉じる。
+-/
+
 public section
 
 namespace Ritsuryo.Date
 
+/-- 実在する日付 `d` について、3 月始まりの月 `marchMonth d.month` が 0〜11 に入り、
+暦の月に戻せること、1・2 月かどうかと対応すること、
+年の中の日（`monthStart` + 日 − 1）から `monthOf` で同じ月に戻ること、
+年の中の日が 0〜364 か、閏年の 2 月 29 日に限り 365 になることをまとめて述べる。
+月の 12 通りで場合分けし、各場合を `omega` で閉じる。2 月は閏年かどうかでさらに分ける。 -/
 theorem valid_month (d : Date) (h : d.Valid) :
     0 ≤ marchMonth d.month ∧ marchMonth d.month ≤ 11 ∧
       (if marchMonth d.month < 10 then marchMonth d.month + 3 else marchMonth d.month - 9) =
@@ -28,6 +51,9 @@ theorem valid_month (d : Date) (h : d.Valid) :
     try omega
   split at h4 <;> simp_all <;> omega
 
+/-- `ofDays z` の計算の途中の値（周期の番号 `era`、周期の中の年 `yoe`、
+年の中の日 `doy`）が分かっているとき、`ofDays z` の結果をそれらで書き下す。
+`ofDays` の `let` を展開するための補題。 -/
 theorem ofDays_eq (z era yoe doy : Int) (hera : (z + 719468) / 146097 = era)
     (hdoe : (z + 719468) % 146097 = yearStart yoe + doy)
     (hyoe : yoeOf (yearStart yoe + doy) = yoe) :
@@ -39,6 +65,10 @@ theorem ofDays_eq (z era yoe doy : Int) (hera : (z + 719468) / 146097 = era)
   have : yearStart yoe + doy - yearStart yoe = doy := by omega
   simp only [this]
 
+/-- 実在する日付を日数にして戻すと、元の日付になる（CAL-1 の本体）。
+`toDays d + 719468` を「3 月始まりの年の周期の番号 × 146,097 + 周期の中の年の始まり + 年の中の日」に分け、
+`ofDays` がその周期の番号・年・日をそのまま取り出すこと（`yoeOf_yearStart`）を使う。
+最後に年・月・日の 3 つがそれぞれ元に戻ることを `omega` で確かめる。 -/
 theorem ofDays_toDays (d : Date) (h : d.Valid) : ofDays (toDays d) = d := by
   obtain ⟨hm0, hm1, hmonth, hlt, hmo, hdoy0, hdoy1⟩ := valid_month d h
   have hy : marchYear d = if d.month ≤ 2 then d.year - 1 else d.year := rfl
@@ -83,6 +113,11 @@ theorem ofDays_toDays (d : Date) (h : d.Valid) : ofDays (toDays d) = d := by
     omega
   rw [hY, hM, hD]
 
+/-- 3 月始まりの月 `mp`（0〜11）を暦の月に戻すと 1〜12 に入り、
+`marchMonth` で `mp` に戻ること、1・2 月かどうかと `mp` ≥ 10 が対応すること、
+月の長さが次の月の `monthStart` との差に等しいこと（最後の 2 月だけは年の長さで決まるので、
+`monthStart` が 337 で日数が 28 か 29 であること）をまとめて述べる。
+12 通りの場合分けをして `simp` で計算する。 -/
 theorem marchMonth_inv (y : Int) (mp : Int) (h0 : 0 ≤ mp) (h1 : mp ≤ 11) :
     1 ≤ (if mp < 10 then mp + 3 else mp - 9) ∧ (if mp < 10 then mp + 3 else mp - 9) ≤ 12 ∧
       marchMonth (if mp < 10 then mp + 3 else mp - 9).toNat = mp ∧
@@ -98,6 +133,10 @@ theorem marchMonth_inv (y : Int) (mp : Int) (h0 : 0 ≤ mp) (h1 : mp ≤ 11) :
   rcases hm with hm | hm | hm | hm | hm | hm | hm | hm | hm | hm | hm | hm <;>
     subst hm <;> simp [marchMonth, monthStart, daysInMonth]
 
+/-- どの整数 `z` についても、`ofDays z` は実在する日付で、それを日数に戻すと `z` になる（CAL-2 の本体）。
+`z + 719468` を周期の番号と周期の中の日に分け、
+`yoeOf_spec` と `monthOf_spec` で年・月・日の範囲を出す。日が月の日数以下であることは、
+2 月（`mp` = 11）だけ別に扱い、日が 29 日になるのは閏年に限ることを示す。 -/
 theorem toDays_ofDays (z : Int) : toDays (ofDays z) = z ∧ (ofDays z).Valid := by
   generalize hera : (z + 719468) / 146097 = era
   generalize hdoe' : (z + 719468) % 146097 = doe
@@ -151,10 +190,12 @@ theorem toDays_ofDays (z : Int) : toDays (ofDays z) = z ∧ (ofDays z).Valid := 
     · have := hlen h11
       omega
 
+/-- 日付の日数は、その月の 1 日の日数に「日 − 1」を足したものになる。 -/
 theorem toDays_day (d : Date) : toDays d = toDays ⟨d.year, d.month, 1⟩ + d.day - 1 := by
   simp only [toDays, marchYear]
   omega
 
+/-- 1〜12 月の日数は 28 日以上 31 日以下。 -/
 theorem daysInMonth_ge (y : Int) (m : Nat) (h1 : 1 ≤ m) (h2 : m ≤ 12) :
     28 ≤ daysInMonth y m ∧ daysInMonth y m ≤ 31 := by
   have hm : m = 1 ∨ m = 2 ∨ m = 3 ∨ m = 4 ∨ m = 5 ∨ m = 6 ∨ m = 7 ∨ m = 8 ∨ m = 9 ∨
@@ -162,6 +203,10 @@ theorem daysInMonth_ge (y : Int) (m : Nat) (h1 : 1 ≤ m) (h2 : m ≤ 12) :
   rcases hm with hm | hm | hm | hm | hm | hm | hm | hm | hm | hm | hm | hm <;>
     subst hm <;> simp only [daysInMonth] <;> (try split) <;> omega
 
+/-- 翌月 1 日の日数は、その月の 1 日の日数に月の日数を足したものになる。
+12 月から翌年 1 月、2 月から 3 月への移り目では 3 月始まりの年が変わるので、
+`marchYearStart_succ` で年の長さ（閏年なら 366 日）を出し、
+月の 12 通りで場合分けして確かめる。 -/
 theorem toDays_firstDay_next (ym : YearMonth) (h1 : 1 ≤ ym.month) (h2 : ym.month ≤ 12) :
     toDays ym.next.firstDay = toDays ym.firstDay + ym.daysInMonth := by
   obtain ⟨y, m⟩ := ym
@@ -180,6 +225,9 @@ theorem toDays_firstDay_next (ym : YearMonth) (h1 : 1 ≤ ym.month) (h2 : ym.mon
     simp_all <;>
     omega
 
+/-- 実在する日付の素朴な翌日 `nextDate` は、日数で 1 進んだ実在する日付になる。
+月末かどうか、12 月かどうかで `nextDate` の場合分けに合わせ、
+月末の場合は `toDays_firstDay_next` を使う。 -/
 theorem toDays_nextDate (d : Date) (h : d.Valid) :
     toDays (nextDate d) = toDays d + 1 ∧ (nextDate d).Valid := by
   obtain ⟨h1, h2, h3, h4⟩ := h
@@ -207,6 +255,9 @@ theorem toDays_nextDate (d : Date) (h : d.Valid) :
       simp only [Valid, daysInMonth]
       omega
 
+/-- 実在する日付の素朴な前日 `prevDate` は、日数で 1 戻った実在する日付になる。
+`toDays_nextDate` と同じ場合分けで、
+月初めの場合は前月（1 月なら前年 12 月）の `toDays_firstDay_next` を使う。 -/
 theorem toDays_prevDate (d : Date) (h : d.Valid) :
     toDays (prevDate d) = toDays d - 1 ∧ (prevDate d).Valid := by
   obtain ⟨h1, h2, h3, h4⟩ := h
@@ -255,10 +306,12 @@ theorem toDays_prevDate (d : Date) (h : d.Valid) :
       · simp only [Valid, daysInMonth]
         omega
 
+/-- 素朴な翌日は、日数に 1 を足して日付に戻したものと同じになる。 -/
 theorem nextDate_eq_ofDays (d : Date) (h : d.Valid) : nextDate d = ofDays (toDays d + 1) := by
   obtain ⟨he, hv⟩ := toDays_nextDate d h
   rw [← he, ofDays_toDays _ hv]
 
+/-- 素朴な前日は、日数から 1 を引いて日付に戻したものと同じになる。 -/
 theorem prevDate_eq_ofDays (d : Date) (h : d.Valid) : prevDate d = ofDays (toDays d - 1) := by
   obtain ⟨he, hv⟩ := toDays_prevDate d h
   rw [← he, ofDays_toDays _ hv]
@@ -266,20 +319,24 @@ end Ritsuryo.Date
 
 namespace Ritsuryo.YearMonth
 
+/-- 1〜12 月の年月を通し番号にして戻すと、元の年月になる。 -/
 theorem ofIndex_index (ym : YearMonth) (h1 : 1 ≤ ym.month) (h2 : ym.month ≤ 12) :
     ofIndex ym.index = ym := by
   obtain ⟨y, m⟩ := ym
   simp only [ofIndex, index, mk.injEq] at *
   omega
 
+/-- 通し番号から戻した年月の月は 1〜12 に入る。 -/
 theorem ofIndex_valid (k : Int) : 1 ≤ (ofIndex k).month ∧ (ofIndex k).month ≤ 12 := by
   simp only [ofIndex]
   omega
 
+/-- 通し番号から年月に戻し、また通し番号にすると元の番号になる。 -/
 theorem index_ofIndex (k : Int) : (ofIndex k).index = k := by
   simp only [ofIndex, index]
   omega
 
+/-- 通し番号 `k` の年月の翌月は、通し番号 `k + 1` の年月になる。12 月かどうかで場合分けする。 -/
 theorem next_ofIndex (k : Int) : (ofIndex k).next = ofIndex (k + 1) := by
   simp only [ofIndex, next]
   by_cases h : (k % 12).toNat + 1 < 12
@@ -288,6 +345,10 @@ theorem next_ofIndex (k : Int) : (ofIndex k).next = ofIndex (k + 1) := by
   · simp only [h, ↓reduceIte, mk.injEq]
     omega
 
+/-- `next` を `n` 回繰り返す素朴な月の移動 `addMonthsNaive` は、
+通し番号に `n` を足す `addMonths` と同じ年月になる。
+期間計算の仕様（月を 1 つずつ数える）と実装（足し算）をつなぐ。`n` についての帰納法で、
+1 月進めることが通し番号で 1 足すこと（`next_ofIndex`）を使う。 -/
 theorem addMonthsNaive_eq (ym : YearMonth) (h1 : 1 ≤ ym.month) (h2 : ym.month ≤ 12) (n : Nat) :
     ym.addMonthsNaive n = ym.addMonths n := by
   induction n generalizing ym with
@@ -306,11 +367,14 @@ namespace Ritsuryo.Date
 
 open YearMonth
 
+/-- 通し番号 `k + 1` の年月の 1 日は、通し番号 `k` の年月の 1 日に、その月の日数を足した日になる。 -/
 theorem firstDay_ofIndex_succ (k : Int) :
     toDays (ofIndex (k + 1)).firstDay = toDays (ofIndex k).firstDay + (ofIndex k).daysInMonth := by
   have hv := ofIndex_valid k
   rw [← next_ofIndex, toDays_firstDay_next _ hv.1 hv.2]
 
+/-- `n` 月後の 1 日は、少なくとも 28 × `n` 日後にある。`n` についての帰納法で、
+どの月も 28 日以上あること（`daysInMonth_ge`）を使う。 -/
 theorem firstDay_ofIndex_add (k : Int) (n : Nat) :
     toDays (ofIndex k).firstDay + 28 * n ≤ toDays (ofIndex (k + n)).firstDay := by
   induction n with
@@ -324,6 +388,7 @@ theorem firstDay_ofIndex_add (k : Int) (n : Nat) :
     rw [this]
     omega
 
+/-- 通し番号 `i` < `j` なら、`j` の年月の 1 日は、`i` の年月の末日の翌日以後にある。 -/
 theorem firstDay_ofIndex_lt (i j : Int) (h : i < j) :
     toDays (ofIndex i).firstDay + (ofIndex i).daysInMonth ≤ toDays (ofIndex j).firstDay := by
   have h1 := firstDay_ofIndex_succ i
@@ -332,6 +397,9 @@ theorem firstDay_ofIndex_lt (i j : Int) (h : i < j) :
   rw [this] at h2
   omega
 
+/-- 実在する日付 `a` が `b` より前（辞書式）なら、`a` の日数は `b` の日数より小さい。
+年月が違う場合は、前の年月の末日が後の年月の 1 日より前にあること（`firstDay_ofIndex_lt`）を使い、
+年月が同じ場合は日の差がそのまま日数の差になること（`toDays_day`）を使う。 -/
 theorem lt_of_toDays_lt (a b : Date) (ha : a.Valid) (hb : b.Valid) (h : a < b) :
     a.toDays < b.toDays := by
   obtain ⟨a1, a2, a3, a4⟩ := ha
@@ -353,6 +421,9 @@ theorem lt_of_toDays_lt (a b : Date) (ha : a.Valid) (hb : b.Valid) (h : a < b) :
     rw [hy, hm]
     omega
 
+/-- 実在する日付どうしでは、辞書式の前後と日数の大小が一致する（CAL-3 の本体）。
+逆向きは、辞書式の順序が全順序であることから、
+`a` < `b` でなければ `b` < `a` か `a` = `b` になり、どちらも日数の大小と矛盾することで示す。 -/
 theorem toDays_lt_iff (a b : Date) (ha : a.Valid) (hb : b.Valid) :
     a < b ↔ a.toDays < b.toDays := by
   refine ⟨lt_of_toDays_lt a b ha hb, fun h => ?_⟩
@@ -376,6 +447,7 @@ theorem toDays_lt_iff (a b : Date) (ha : a.Valid) (hb : b.Valid) :
     · subst heq
       omega
 
+/-- 実在する日付どうしで日数が等しければ、日付も等しい。`ofDays_toDays` から従う。 -/
 theorem toDays_inj (a b : Date) (ha : a.Valid) (hb : b.Valid) (h : a.toDays = b.toDays) :
     a = b := by
   rw [← ofDays_toDays a ha, ← ofDays_toDays b hb, h]
@@ -384,6 +456,7 @@ end Ritsuryo.Date
 
 namespace Ritsuryo.Weekday
 
+/-- 日数を 1 進めると、曜日は次の曜日になる。`(z + 4) % 7` の 7 通りで場合分けする。 -/
 theorem ofDays_succ (z : Int) : ofDays (z + 1) = (ofDays z).next := by
   simp only [ofDays]
   have h : (z + 4) % 7 = 0 ∨ (z + 4) % 7 = 1 ∨ (z + 4) % 7 = 2 ∨ (z + 4) % 7 = 3 ∨
@@ -395,16 +468,22 @@ end Ritsuryo.Weekday
 
 namespace Ritsuryo.Date
 
+/-- 日付の曜日は、日数に 4 を足して 7 で割った余りの番号の曜日になる（定義から）。 -/
 theorem weekday_eq (d : Date) : d.weekday = Weekday.ofIndex ((d.toDays + 4) % 7).toNat := rfl
 
+/-- 実在する日付の素朴な翌日の曜日は、その日の曜日の次の曜日になる。 -/
 theorem weekday_nextDate (d : Date) (h : d.Valid) : (nextDate d).weekday = d.weekday.next := by
   simp only [weekday, (toDays_nextDate d h).1, Weekday.ofDays_succ]
 
+/-- 西暦で書いた `isLeapYear` は、閏年ニ関スル件の文言どおり皇紀で判定する `IsLeapYearSpec` と一致する。
+皇紀は西暦 + 660 で、660 は 4 の倍数なので、剰余の条件を `omega` で言い換えられる。 -/
 theorem isLeapYear_iff_spec (y : Int) : isLeapYear y = true ↔ IsLeapYearSpec y := by
   rw [isLeapYear_iff]
   simp only [IsLeapYearSpec]
   omega
 
+/-- 翌年 1 月 1 日は、その年の 1 月 1 日の 365 日後で、閏年なら 366 日後になる。
+1 月 1 日はどちらも前の 3 月始まりの年に属するので、`marchYearStart_succ` から従う。 -/
 theorem toDays_newYear_succ (y : Int) :
     toDays ⟨y + 1, 1, 1⟩ - toDays ⟨y, 1, 1⟩ = if isLeapYear y then 366 else 365 := by
   have h := marchYearStart_succ (y - 1)
@@ -423,30 +502,40 @@ end Ritsuryo.Date
 
 namespace Ritsuryo.Date
 
+/-- CAL-1: 実在する日付（先発グレゴリオ暦、年は `Int`）を日数にして戻すと、元の日付になる。 -/
 @[ritsuryo_proof "CAL-1", ritsuryo_basis "改暦ノ布告" "本則"]
 theorem cal1_ofDays_toDays (d : Date) (h : d.Valid) : ofDays (toDays d) = d :=
   ofDays_toDays d h
 
+/-- CAL-2: どの整数も、ある実在する日付の日数になる。`ofDays z` は実在する日付で、日数に戻すと `z` になる。 -/
 @[ritsuryo_proof "CAL-2", ritsuryo_basis "改暦ノ布告" "本則"]
 theorem cal2_toDays_ofDays (z : Int) : toDays (ofDays z) = z ∧ (ofDays z).Valid :=
   toDays_ofDays z
 
+/-- CAL-3: 実在する日付どうしの辞書式の前後は、日数の大小と一致する。 -/
 @[ritsuryo_proof "CAL-3", ritsuryo_basis "改暦ノ布告" "本則"]
 theorem cal3_lt_iff (a b : Date) (ha : a.Valid) (hb : b.Valid) :
     a < b ↔ a.toDays < b.toDays :=
   toDays_lt_iff a b ha hb
 
+/-- CAL-4: 月末・年末・閏年を場合分けする素朴な翌日 `nextDate` は、日数に 1 を足した日と同じで、
+実在する日付になる。期間計算の仕様（`nextDate` を繰り返す）と実装（日数の足し算）をつなぐ。 -/
 @[ritsuryo_proof "CAL-4", ritsuryo_basis "改暦ノ布告" "本則"]
 theorem cal4_nextDate (d : Date) (h : d.Valid) :
     nextDate d = ofDays (toDays d + 1) ∧ (nextDate d).Valid :=
   ⟨nextDate_eq_ofDays d h, (toDays_nextDate d h).2⟩
 
+/-- CAL-5: 日付の曜日は日数に 4 を足して 7 で割った余りで決まり、翌日の曜日は次の曜日になる。
+民法第142条の「日曜日」の判定はこの曜日による。 -/
 @[ritsuryo_proof "CAL-5", ritsuryo_basis "民法" "第142条"]
 theorem cal5_weekday (d : Date) (h : d.Valid) :
     d.weekday = Weekday.ofIndex ((d.toDays + 4) % 7).toNat ∧
       (nextDate d).weekday = d.weekday.next :=
   ⟨weekday_eq d, weekday_nextDate d h⟩
 
+/-- CAL-6: 各月の日数は、翌月 1 日と当月 1 日の日数の差に等しい。2 月が 29 日になるのは、
+閏年ニ関スル件の文言どおり皇紀で判定して閏年になる年に限る。
+前半は `toDays_firstDay_next`、後半は `isLeapYear_iff_spec` から従う。 -/
 @[ritsuryo_proof "CAL-6", ritsuryo_basis "閏年ニ関スル件" "本則"]
 theorem cal6_daysInMonth (ym : YearMonth) (h1 : 1 ≤ ym.month) (h2 : ym.month ≤ 12) :
     toDays ym.next.firstDay - toDays ym.firstDay = ym.daysInMonth ∧

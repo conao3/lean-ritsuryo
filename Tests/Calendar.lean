@@ -4,14 +4,24 @@ public import Ritsuryo
 public import Std.Time
 public import Tests.Harness
 
+/-!
+# 暦のテスト
+
+- `examples`: 閏年、日付の有効性、日番号（1970-01-01 が 0）、翌日・前日、曜日、月の加算の具体例。
+- `differential`: 1600-01-01 から 2400-12-31 までのすべての日で、`Date.ofDays`・`toDays`・曜日が
+  Lean の標準ライブラリ `Std.Time` と一致することを確かめる。CAL の証明とは別に、実装を独立の実装と比べる。
+-/
+
 public section
 
 namespace Ritsuryo.Tests.Calendar
 
 open Ritsuryo Date
 
+/-- テストで日付を短く書くための関数。 -/
 def d (y : Int) (m n : Nat) : Date := ⟨y, m, n⟩
 
+/-- 失敗の説明に出す日付の文字列。 -/
 instance : ToString Date where
   toString x := s!"{x.year}-{x.month}-{x.day}"
 
@@ -21,6 +31,7 @@ instance : ToString YearMonth where
 instance : ToString Weekday where
   toString := Weekday.toString
 
+/-- 暦の具体例。 -/
 def examples : TestM Unit := do
   check "2024 is a leap year" (isLeapYear 2024)
   check "2023 is not a leap year" (!isLeapYear 2023)
@@ -41,9 +52,11 @@ def examples : TestM Unit := do
   checkEq "2026-11-02 is a Monday" (d 2026 11 2).weekday .monday
   checkEq "addMonths 2026-11 + 3" (YearMonth.addMonths ⟨2026, 11⟩ 3) ⟨2027, 2⟩
 
+/-- `Std.Time` の曜日を、日曜日を 0 とする番号にする（`Weekday.ofIndex` と同じ番号）。 -/
 def stdWeekdayIndex (w : Std.Time.Weekday) : Nat :=
   w.toOrdinal.val.toNat % 7
 
+/-- `Std.Time` との差分テスト。食い違いは最初の 5 件だけを失敗の説明に入れる。 -/
 def differential : TestM Unit := do
   let lo := toDays (d 1600 1 1)
   let hi := toDays (d 2400 12 31)
@@ -63,6 +76,7 @@ def differential : TestM Unit := do
   check s!"ofDays, toDays, weekday agree with Std.Time on {count} days (1600-01-01..2400-12-31)"
     mismatches.isEmpty (", ".intercalate mismatches.toList)
 
+/-- 暦のテストのスイート。 -/
 def suites : List (String × TestM Unit) :=
   [("calendar examples", examples), ("calendar vs Std.Time", differential)]
 

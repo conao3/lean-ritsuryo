@@ -22,7 +22,7 @@
         {
           packages.default = pkgs.stdenv.mkDerivation {
             pname = "ritsuryo";
-            version = "0.1.0";
+            version = "0.5.0";
             src = pkgs.lib.cleanSource ./.;
             nativeBuildInputs = [ pkgs.lean4 ];
             buildPhase = ''

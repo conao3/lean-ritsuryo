@@ -3,12 +3,31 @@ module
 public import Ritsuryo.Period.Proofs.Civil
 meta import Ritsuryo.Basis
 
+/-!
+# 期間の計算の性質（PER-2〜PER-7）
+
+民法第140条・第143条の期間の計算について、条文から期待される性質を示す。
+
+- PER-2（`per2_from_beginning`）: 月・年・週の初めから起算する期間（第143条第1項）も、第2項の式で暦どおりの結果になる。
+- PER-3（`per3_weeks_years`）: n 週は 7n 日、n 年は 12n か月と同じ末日になる。
+- PER-4（`per4_not_additive`・`per4_bound`）: 1 か月の期間を 2 回つなぐと 2 か月の期間と一致しないことがあり、ずれは 0〜3 日。
+- PER-5（`per5_monotone`）: 末日は出来事の日と期間の長さについて単調。
+- PER-6（`per6_months_from_event`）: 出来事から n か月の末日の閉じた式（月末の出来事は n か月後の月末）。
+- PER-7（`per7_national_tax_general`）: 国税通則法第10条第1項の仕様は民法の仕様と同じ末日になる。
+
+月の期間の証明は、末日の通算日を最後の月の1日の通算日で表す式（`months_formula`）と、末日がその月の中に収まること
+（`months_bounds`）を土台にし、あとは通算日の不等式を `omega`（線形算術の決定手続き）で閉じる。
+仕様についての主張は、PER-1 の補題（`expiryFromStart_spec`）で実装の通算日についての主張に移してから示す。
+-/
+
 public section
 
 namespace Ritsuryo.Period
 
 open Date
 
+/-- 起算日 `s` から `n` か月の期間の末日の通算日を、最後の月（`n` か月後の月）の1日の通算日で表す式。
+応当日があれば「1日の通算日 + 起算日の日 - 2」（応当日の前日）、なければ「1日の通算日 + 月の日数 - 1」（月の末日）になる。 -/
 theorem months_formula (s : Date) (n : Nat) :
     expiryFromStartDays s (.months n) =
       if s.day ≤ (s.yearMonth.addMonths n).daysInMonth then
@@ -24,6 +43,8 @@ theorem months_formula (s : Date) (n : Nat) :
   · simp only [hd, ↓reduceIte]
     rw [toDays_lastDay]
 
+/-- `n` か月の期間の末日は、最後の月の前月の末日から最後の月の末日までの間にある。
+応当日が1日のとき末日は前月の末日になるので、下限は最後の月の1日の前日になる。 -/
 theorem months_bounds (s : Date) (h : s.Valid) (n : Nat) :
     toDays (s.yearMonth.addMonths n).firstDay - 1 ≤ expiryFromStartDays s (.months n) ∧
       expiryFromStartDays s (.months n) ≤
@@ -32,12 +53,14 @@ theorem months_bounds (s : Date) (h : s.Valid) (n : Nat) :
   have := h.2.2.1
   split <;> omega
 
+/-- `a < b` なら、`a` か月後の月の末日の翌日は `b` か月後の月の1日以前にある。 -/
 theorem firstDay_addMonths_lt (ym : YearMonth) (a b : Nat) (hab : a < b) :
     toDays (ym.addMonths a).firstDay + (ym.addMonths a).daysInMonth ≤
       toDays (ym.addMonths b).firstDay := by
   simp only [YearMonth.addMonths]
   exact firstDay_ofIndex_lt _ _ (by omega)
 
+/-- 月の期間の末日は、月数について単調。月数が違えば最後の月が違い、`months_bounds` の範囲が重ならないことによる。 -/
 theorem months_mono_length (s : Date) (h : s.Valid) (a b : Nat) (hab : a ≤ b) :
     expiryFromStartDays s (.months a) ≤ expiryFromStartDays s (.months b) := by
   by_cases he : a = b
@@ -48,6 +71,8 @@ theorem months_mono_length (s : Date) (h : s.Valid) (a b : Nat) (hab : a ≤ b) 
     have hb := months_bounds s h b
     omega
 
+/-- 通算日で `s1` が `s2` 以前なら、`s1` の年月の通し番号は `s2` の年月の通し番号以下になる。背理法で、
+`s2` の月が先なら `s2` の月の末日より後に `s1` があることになり矛盾する。 -/
 theorem index_le_of_toDays_le (s1 s2 : Date) (h1 : s1.Valid) (h2 : s2.Valid)
     (h : toDays s1 ≤ toDays s2) : s1.yearMonth.index ≤ s2.yearMonth.index := by
   by_cases hi : s2.yearMonth.index < s1.yearMonth.index
@@ -63,6 +88,8 @@ theorem index_le_of_toDays_le (s1 s2 : Date) (h1 : s1.Valid) (h2 : s2.Valid)
     omega
   · omega
 
+/-- 月の期間の末日は、起算日について単調。起算日が同じ月なら日の大小と `months_formula` で比べ、
+違う月なら最後の月も違うので `months_bounds` の範囲で比べる。 -/
 theorem months_mono_start (s1 s2 : Date) (h1 : s1.Valid) (h2 : s2.Valid)
     (h : toDays s1 ≤ toDays s2) (n : Nat) :
     expiryFromStartDays s1 (.months n) ≤ expiryFromStartDays s2 (.months n) := by
@@ -87,6 +114,7 @@ theorem months_mono_start (s1 s2 : Date) (h1 : s1.Valid) (h2 : s2.Valid)
     simp only [YearMonth.addMonths] at ha hb
     omega
 
+/-- 期間の末日は、すべての単位で起算日について単調。日・週は通算日の足し算、月・年は `months_mono_start` による。 -/
 theorem expiryFromStart_mono_start (s1 s2 : Date) (h1 : s1.Valid) (h2 : s2.Valid)
     (h : toDays s1 ≤ toDays s2) (len : Length) :
     expiryFromStartDays s1 len ≤ expiryFromStartDays s2 len := by
@@ -96,6 +124,11 @@ theorem expiryFromStart_mono_start (s1 s2 : Date) (h1 : s1.Valid) (h2 : s2.Valid
   | months n => exact months_mono_start s1 s2 h1 h2 h n
   | years n => exact months_mono_start s1 s2 h1 h2 h (12 * n)
 
+/-- PER-2: 第143条第1項の「週、月又は年の初めから期間を起算する」場合も、第2項の式で暦どおりの末日になる。
+1日に起算する `n` か月の期間は `n - 1` か月後の月の末日、1月1日に起算する `n` 年の期間は `n - 1` 年後の12月31日、
+日曜日に起算する `n` 週の期間は `7 * n - 1` 日後の土曜日に満了する。
+月は `months_formula` と、末日の翌日が翌月の1日であること（`toDays_lastDay_next`）で示す。
+年は仕様を展開して計算し、週は通算日を 7 で割った余りで曜日を出す。 -/
 @[ritsuryo_proof "PER-2", ritsuryo_basis "民法" "第143条第1項",
   ritsuryo_basis "民法" "第143条第2項"]
 theorem per2_from_beginning (start : Date) (h : start.Valid) (n : Nat) (hn : 1 ≤ n) :
@@ -139,6 +172,8 @@ theorem per2_from_beginning (start : Date) (h : start.Valid) (n : Nat) (hn : 1 �
     rw [show ((toDays start + 7 * n - 1 + 4) % 7).toNat = 6 by omega]
     rfl
 
+/-- PER-3: `n` 週の期間は `7 * n` 日の期間と、`n` 年の期間は `12 * n` か月の期間と同じ末日になる。
+週は `weekCorresponding_eq`、年は最後の月が同じになること（`lastMonth_eq`）による。 -/
 @[ritsuryo_proof "PER-3", ritsuryo_basis "民法" "第143条第2項"]
 theorem per3_weeks_years (start : Date) (h : start.Valid) (n : Nat) :
     Civil.expiryFromStartSpec start (.weeks n) = Civil.expiryFromStartSpec start (.days (7 * n)) ∧
@@ -153,7 +188,10 @@ theorem per3_weeks_years (start : Date) (h : start.Valid) (n : Nat) :
       rfl
     simp only [Civil.expiryFromStartSpec, Civil.correspondingDaySpec, this]
 
-@[ritsuryo_basis "民法" "第143条第2項"]
+/-- PER-4 の例: 2025年1月31日に起算する 1 か月の期間は2月28日に満了し（2月に31日がないので月の末日）、
+その翌日の3月1日から 1 か月の期間は3月31日に満了する。一方、1月31日に起算する 2 か月の期間は3月30日に満了する。
+1 か月の期間を 2 回つないだ結果と 2 か月の期間は一致しない。具体的な日付なので `decide` で計算して確かめる。 -/
+@[ritsuryo_proof "PER-4", ritsuryo_basis "民法" "第143条第2項"]
 theorem per4_not_additive :
     Civil.expiryFromStartSpec
         (nextDate (Civil.expiryFromStartSpec ⟨2025, 1, 31⟩ (.months 1))) (.months 1) =
@@ -161,25 +199,33 @@ theorem per4_not_additive :
     Civil.expiryFromStartSpec ⟨2025, 1, 31⟩ (.months 2) = ⟨2025, 3, 30⟩ := by
   decide
 
+/-- 月が 1〜12 なら、その月の1日は有効な日付になる。 -/
 theorem firstDay_valid (ym : YearMonth) (h1 : 1 ≤ ym.month) (h2 : ym.month ≤ 12) :
     ym.firstDay.Valid := by
   have := daysInMonth_ge ym.year ym.month h1 h2
   exact ⟨h1, h2, by simp [YearMonth.firstDay], by simp only [YearMonth.firstDay]; omega⟩
 
+/-- 月が 1〜12 なら、翌月の月も 1〜12 になる。 -/
 theorem next_month_valid (ym : YearMonth) (h1 : 1 ≤ ym.month) (h2 : ym.month ≤ 12) :
     1 ≤ ym.next.month ∧ ym.next.month ≤ 12 := by
   simp only [YearMonth.next]
   split <;> simp <;> omega
 
+/-- 末日の仕様の通算日は、実装 `expiryFromStartDays` の値と等しい。仕様についての主張を通算日の計算に移すのに使う。 -/
 theorem spec_toDays (s : Date) (h : s.Valid) (len : Length) :
     toDays (Civil.expiryFromStartSpec s len) = expiryFromStartDays s len := by
   rw [← expiryFromStart_spec s h, (toDays_ofDays _).1]
 
+/-- 有効な起算日から出した末日の仕様は、有効な日付になる。 -/
 theorem spec_valid (s : Date) (h : s.Valid) (len : Length) :
     (Civil.expiryFromStartSpec s len).Valid := by
   rw [← expiryFromStart_spec s h]
   exact (toDays_ofDays _).2
 
+/-- PER-4: 起算日 `s` から `a` か月の期間の満了の翌日を起算日として `b` か月の期間をつなぐと、その末日は
+`a + b` か月の期間の末日と同じか、0〜3 日後になる。ずれは、途中の月に応当日がなく月の末日で満了したときに生じ、
+月の日数の差（最大で31日と28日の差の 3 日）を超えない。
+`months_formula` で両辺を最後の月の1日の通算日で表し、途中の月に応当日があるかで場合分けして `omega` で閉じる。 -/
 @[ritsuryo_proof "PER-4", ritsuryo_basis "民法" "第143条第2項"]
 theorem per4_bound (s : Date) (h : s.Valid) (a b : Nat) :
     0 ≤ toDays (Civil.expiryFromStartSpec
@@ -237,6 +283,9 @@ theorem per4_bound (s : Date) (h : s.Valid) (a b : Nat) :
     · simp only [hd2, ↓reduceIte]
       omega
 
+/-- PER-5: CLI の `compute` の末日は、出来事の日について単調で（出来事が遅いほど末日も遅いか同じ）、
+同じ単位の期間の長さについても単調。日付は有効性を仮定せず、通算日を日付に戻した起算日（常に有効）について示す。
+出来事の日については `expiryFromStart_mono_start`、長さについては日・週は通算日の足し算、月・年は `months_mono_length` による。 -/
 @[ritsuryo_proof "PER-5", ritsuryo_basis "民法" "第140条", ritsuryo_basis "民法" "第143条第2項"]
 theorem per5_monotone (e1 e2 : Date) (startAtMidnight : Bool) :
     (toDays e1 ≤ toDays e2 → ∀ len,
@@ -266,6 +315,10 @@ theorem per5_monotone (e1 e2 : Date) (startAtMidnight : Bool) :
     · exact months_mono_length _ hs1.2 a b hab
     · exact months_mono_length _ hs1.2 (12 * a) (12 * b) (by omega)
 
+/-- PER-6: 出来事の日 `event` から（初日不算入で）`n` か月の期間の末日の閉じた式。
+出来事が月の末日なら、起算日は翌月の1日になり、末日は `n` か月後の月の末日になる。
+それ以外なら、起算日は同じ月の翌日で、末日は `n` か月後の月の出来事と同じ日付の日（その日付がなければその月の末日）になる。
+二つの場合それぞれで起算日を具体的に出し、`months_formula` に当てはめる。 -/
 @[ritsuryo_proof "PER-6", ritsuryo_basis "民法" "第140条", ritsuryo_basis "民法" "第143条第2項"]
 theorem per6_months_from_event (event : Date) (h : event.Valid) (n : Nat) :
     (compute event false (.months n)).expiry =
@@ -328,6 +381,8 @@ theorem per6_months_from_event (event : Date) (h : event.Valid) (n : Nat) :
       rw [hmin, ← toDays_lastDay]
       exact ofDays_toDays _ (lastDay_valid _ hT.1 hT.2)
 
+/-- 同じ起算日から数えると、国税通則法第10条第1項の末日の仕様は民法の末日の仕様と等しい。
+両方の定義を展開し、応当日があるかで場合分けする。 -/
 theorem taxGeneral_fromStart (start : Date) (len : TaxLength) :
     TaxGeneral.expiryFromStartSpec start len = Civil.expiryFromStartSpec start len.toLength := by
   cases len with
@@ -341,6 +396,9 @@ theorem taxGeneral_fromStart (start : Date) (len : TaxLength) :
       Civil.correspondingDaySpec, Civil.lastMonthSpec, TaxLength.toLength]
     by_cases hd : start.day ≤ (⟨start.year + n, start.month⟩ : YearMonth).daysInMonth <;> simp [hd]
 
+/-- PER-7: 国税通則法第10条第1項の仕様は、日・月・年の期間について民法の仕様と同じ末日になり、
+CLI の `computeTax` の末日は国税通則法の仕様と一致する。起算日の定義が同じなので `taxGeneral_fromStart` で前半を示し、
+後半は前半と PER-1 を組み合わせる。 -/
 @[ritsuryo_proof "PER-7", ritsuryo_basis "国税通則法" "第10条第1項"]
 theorem per7_national_tax_general (event : Date) (h : event.Valid) (startAtMidnight : Bool)
     (len : TaxLength) :

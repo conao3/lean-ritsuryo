@@ -1,3 +1,9 @@
+"""内閣府の「国民の祝日」CSV から Ritsuryo/Holiday/Data/Generated.lean を生成する。
+
+CSV（data/syukujitsu.csv、Shift_JIS）の行を年ごとの Lean の表 y1955 ... にし、年の順に並べた byYear と、
+取得元・Last-Modified・SHA-256・年の範囲・行数の定義を書き出す。行の種類は名称で決める（kind_of）。
+"""
+
 import argparse
 import csv
 import datetime
@@ -22,6 +28,7 @@ BASIS = '@[ritsuryo_basis "国民の祝日に関する法律" "第2条"]'
 
 
 def fetch():
+    """CSV を内閣府から取り直し、data/ に CSV と取得元・Last-Modified（UTC）の JSON を書く。"""
     with urllib.request.urlopen(URL) as response:
         body = response.read()
         last_modified = response.headers["Last-Modified"]
@@ -35,6 +42,7 @@ def fetch():
 
 
 def kind_of(name):
+    """CSV の名称から Lean の EntryKind の名前を決める。「休日」は第3条第2項・第3項の休日になる。"""
     if name == REST:
         return "rest"
     if name == TREATED_AS_NATIONAL:
@@ -45,10 +53,12 @@ def kind_of(name):
 
 
 def lean_string(s):
+    """Lean の文字列リテラルにする。"""
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
 def render():
+    """CSV と data/syukujitsu.json から Generated.lean の中身を作る。年が連続していなければ止まる。"""
     raw = CSV_PATH.read_bytes()
     meta = json.loads(META_PATH.read_text(encoding="utf-8"))
     rows = list(csv.reader(io.StringIO(raw.decode("shift_jis"))))
@@ -105,6 +115,7 @@ def render():
 
 
 def main():
+    """--fetch で CSV を取り直し、--check で生成済みのファイルとの差を検査し、どちらもなければ書き出す。"""
     parser = argparse.ArgumentParser(
         description="Generate Ritsuryo/Holiday/Data/Generated.lean from the Cabinet Office CSV."
     )
