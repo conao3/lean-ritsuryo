@@ -2,7 +2,7 @@
 
 [日本語](README-ja.md)
 
-lean-ritsuryo is a library and CLI that computes periods and taxes under Japanese law, written in Lean 4. The functions the CLI runs come with proofs that they compute what the provisions say. The Lake package and the CLI are both named `ritsuryo`.
+lean-ritsuryo is a library and CLI that computes periods and taxes under Japanese law, written in Lean 4. The library's functions come with proofs that they compute what the provisions say, and the CLI calls those same functions. The Lake package and the CLI are both named `ritsuryo`.
 
 It covers these provisions:
 
@@ -15,7 +15,7 @@ It covers these provisions:
 - 加算税: 国税通則法 第65条〜第68条
 - Rounding: 国税通則法 第118条, 第119条
 
-Each computation has 2 definitions. One is the spec, which copies the structure of the provision as it is. The other is the implementation the CLI runs.
+Each computation has 2 definitions. One is the spec, which copies the structure of the provision as it is and is used only in proofs. The other is the implementation used for the actual computation, which both programs using the library and the CLI call.
 
 The theorems prove that the spec and the implementation return the same value on every input. They also prove other properties, such as monotonicity, that the rollover rules return the first day that isn't a holiday, and an upper bound on the difference rounding makes.
 
