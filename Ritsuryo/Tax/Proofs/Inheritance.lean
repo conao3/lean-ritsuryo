@@ -21,14 +21,11 @@ theorem quickCents_dvd (x : Nat) (h : x % 200 = 0) : quickCents x % 100 = 0 := b
 @[ritsuryo_proof "TAX-2", ritsuryo_basis "相続税法" "第16条"]
 theorem tax2_quick_eq_spec (x : Nat) :
     quickCents x = taxCentsSpec x ∧ (x % 1000 = 0 → 100 * taxOn x = taxCentsSpec x) := by
-  have hq : quickCents x = taxCentsSpec x := by
-    simp only [taxCentsSpec, table, progressiveCents, quickCents]
-    repeat' split
-    all_goals omega
+  have hq : quickCents x = taxCentsSpec x := (congrFun taxCentsSpec_eq_quickCents x).symm
   refine ⟨hq, fun h => ?_⟩
   have := quickCents_dvd x (by omega)
   rw [← hq]
-  simp only [taxOn]
+  simp only [taxOn, taxCentsSpec_eq_quickCents]
   omega
 
 /-- 順位の人数が正であること（`rankOf` の結果はいつもこれを満たす）。 -/

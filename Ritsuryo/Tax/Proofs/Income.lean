@@ -31,15 +31,9 @@ theorem quickCents_le (x : Nat) : quickCents x ≤ 45 * x := by
 @[ritsuryo_proof "TAX-1", ritsuryo_basis "所得税法" "第89条第1項"]
 theorem tax1_quick_eq_spec (x : Nat) :
     quickCents x = incomeTaxCentsSpec x ∧ 100 * taxOn x = incomeTaxCentsSpec (taxBase x) := by
-  have hq : ∀ y, quickCents y = incomeTaxCentsSpec y := by
-    intro y
-    simp only [incomeTaxCentsSpec, table, progressiveCents, quickCents]
-    repeat' split
-    all_goals omega
-  refine ⟨hq x, ?_⟩
-  rw [← hq]
+  refine ⟨(congrFun incomeTaxCentsSpec_eq_quickCents x).symm, ?_⟩
   have := quickCents_dvd (taxBase x) (by simp only [taxBase, floorTo]; omega)
-  simp only [taxOn]
+  simp only [taxOn, incomeTaxCentsSpec_eq_quickCents]
   omega
 
 /-- 限界税率の上下界: 金額が `y - x` 増えると、税額（百分の一円単位）は百分の五から百分の四十五の割合で増える。 -/
@@ -85,7 +79,7 @@ theorem tax3_monotone (x y : Nat) (h : x ≤ y) :
   have hdy := quickCents_dvd (taxBase y) (by simp only [taxBase, floorTo]; omega)
   have hlx := quickCents_le (taxBase x)
   have hly := quickCents_le (taxBase y)
-  simp only [taxOn, finalAmount, floorTo, taxBase] at *
+  simp only [taxOn, incomeTaxCentsSpec_eq_quickCents, finalAmount, floorTo, taxBase] at *
   omega
 
 /-- 5 分 5 乗（TAX-5）。実装の `timberTaxOn` は、第89条第1項の「課税山林所得金額の五分の一に相当する金額を

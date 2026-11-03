@@ -15,7 +15,9 @@ It covers these provisions:
 - 加算税: 国税通則法 第65条〜第68条
 - Rounding: 国税通則法 第118条, 第119条
 
-Each computation has 2 definitions. One is the spec, which copies the structure of the provision as it is and is used only in proofs. The other is the implementation used for the actual computation, which both programs using the library and the CLI call.
+Each computation has 2 definitions. One is the spec, which copies the structure of the provision as it is. The other is the implementation used for the actual computation. Programs using the library and the CLI both compute through the implementation.
+
+Where the spec and the implementation are equal on every input, as with the 所得税 and 相続税 rate tables, the library functions call the spec. The theorem that they are equal carries `@[csimp]`, so the compiler replaces calls to the spec with calls to the implementation.
 
 The theorems prove that the spec and the implementation return the same value on every input. They also prove other properties, such as monotonicity, that the rollover rules return the first day that isn't a holiday, and an upper bound on the difference rounding makes.
 

@@ -76,6 +76,15 @@ def quickCents (x : Nat) : Nat :=
   else if x ≤ 600000000 then 50 * x - 4200000000
   else 55 * x - 7200000000
 
+/-- 速算表の式と第16条の区分ごとの積み上げは、すべての金額で等しい（TAX-2 の前半）。
+`@[csimp]` により、`taxCentsSpec` を呼ぶコードはコンパイルのときに `quickCents` を呼ぶコードになる。 -/
+@[csimp]
+theorem taxCentsSpec_eq_quickCents : @taxCentsSpec = @quickCents := by
+  funext x
+  simp only [taxCentsSpec, table, progressiveCents, quickCents]
+  repeat' split
+  all_goals omega
+
 /-- 相続人の構成。人数は相続の放棄がなかったものとして数える（第15条第2項）。
 直系尊属は親等の最も近い者だけを数える（民法第889条第1項第1号ただし書）。 -/
 structure Heirs where
@@ -197,7 +206,7 @@ structure Result where
 /-- 取得金額 `x` 円に対する税額（円）。`x` は千円の倍数なので割り切れる。 -/
 @[ritsuryo_basis "相続税法" "第16条"]
 def taxOn (x : Nat) : Nat :=
-  quickCents x / 100
+  taxCentsSpec x / 100
 
 /-- 相続税の総額。`value` は課税価格の合計額。相続人がいないときは課税遺産総額をそのまま表に当てる
 （第16条かっこ書。相続人が 1 人のときも同じ結果になる）。 -/

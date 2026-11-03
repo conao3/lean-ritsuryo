@@ -9,8 +9,8 @@ meta import Ritsuryo.Basis
 
 所得税法第89条は、課税総所得金額などを税率表の区分に分けて積み上げる形で税額を定める。国税庁の
 「所得税の速算表」（税率 × 課税所得 − 控除額）はこの積み上げを 1 本の式にまとめたもので、
-このファイルでは両方を書き、すべての金額で一致することを TAX-1 で証明する。計算に使う実装は速算表のほうで、
-積み上げ（`incomeTaxCentsSpec`）が条文と見比べるための仕様になる。
+このファイルでは両方を書き、すべての金額で一致することを `@[csimp]` の定理で証明する。税額の関数は条文を写した
+積み上げ（`incomeTaxCentsSpec`）を呼び、コンパイラがこの定理で速算表（`quickCents`）の式に置き換える。
 
 e-Gov 法令履歴 `340AC0000000033_20261001_507AC0000000070`。
 
@@ -65,21 +65,32 @@ def quickCents (x : Nat) : Nat :=
   else if x ≤ 40000000 then 40 * x - 279600000
   else 45 * x - 479600000
 
+/-- 速算表の式と第89条の区分ごとの積み上げは、すべての金額で等しい（TAX-1 の前半）。
+`@[csimp]` により、`incomeTaxCentsSpec` を呼ぶコードはコンパイルのときに `quickCents` を呼ぶコードになる。
+証明は金額を区分で場合分けし、区分ごとに 1 次式の等式を `omega` で閉じる。 -/
+@[csimp]
+theorem incomeTaxCentsSpec_eq_quickCents : @incomeTaxCentsSpec = @quickCents := by
+  funext x
+  simp only [incomeTaxCentsSpec, table, progressiveCents, quickCents]
+  repeat' split
+  all_goals omega
+
 /-- 課税総所得金額（または課税退職所得金額）に対する税額。金額の千円未満を切り捨ててから
-（国税通則法第118条第1項）速算表を当てる。切捨て後の金額は千円の倍数なので、税額は円で割り切れる。 -/
+（国税通則法第118条第1項）第89条の区分ごとの積み上げを当てる。切捨て後の金額は千円の倍数なので、
+税額は円で割り切れる。 -/
 @[ritsuryo_basis "所得税法" "第89条第1項", ritsuryo_basis "国税通則法" "第118条第1項"]
 def taxOn (x : Nat) : Nat :=
-  quickCents (taxBase x) / 100
+  incomeTaxCentsSpec (taxBase x) / 100
 
 /-- 仕様: 課税山林所得金額の税額（いわゆる 5 分 5 乗）。五分の一の金額を区分して積み上げ、五を掛ける。 -/
 @[ritsuryo_basis "所得税法" "第89条第1項"]
 def timberTaxCentsSpec (x : Nat) : Nat :=
   5 * progressiveCents table 0 (x / 5)
 
-/-- 課税山林所得金額の税額。千円未満を切り捨てた金額の五分の一に速算表を当て、五を掛ける。 -/
+/-- 課税山林所得金額の税額。千円未満を切り捨てた金額の五分の一に第89条の積み上げを当て、五を掛ける。 -/
 @[ritsuryo_basis "所得税法" "第89条第1項", ritsuryo_basis "国税通則法" "第118条第1項"]
 def timberTaxOn (x : Nat) : Nat :=
-  5 * (quickCents (taxBase x / 5) / 100)
+  5 * (incomeTaxCentsSpec (taxBase x / 5) / 100)
 
 /-- 第89条第1項の所得税の額。課税総所得金額・課税退職所得金額・課税山林所得金額それぞれの税額の合計。 -/
 @[ritsuryo_basis "所得税法" "第89条第1項"]
