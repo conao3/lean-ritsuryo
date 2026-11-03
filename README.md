@@ -2,7 +2,7 @@
 
 [日本語](README-ja.md)
 
-lean-ritsuryo is a library and CLI that computes periods and taxes under Japanese law, written in Lean 4. The library's functions come with proofs that they compute what the provisions say, and the CLI calls those same functions. The Lake package and the CLI are both named `ritsuryo`.
+lean-ritsuryo is a library and CLI that computes periods and taxes under Japanese law, written in Lean 4. The library's functions come with proofs that they compute what the provisions say, and the CLI computes by calling them. The Lake package and the CLI are both named `ritsuryo`.
 
 It covers these provisions:
 
@@ -15,15 +15,15 @@ It covers these provisions:
 - 加算税: 国税通則法 第65条〜第68条
 - Rounding: 国税通則法 第118条, 第119条
 
-Definitions copy the structure of the provision as closely as they can; these are the specs. Lean definitions run as they are, so where a spec works for the computation, no other definition is written. Whether it does sorts the code into 3 cases:
+Each computation is first written as a definition that follows the structure of the provision; below, that definition is called the spec. Lean definitions run, so if the spec can do the computation as it is, nothing else is written. Specs are handled in 3 ways.
 
-- The spec equals a faster formula on every input (the 所得税 and 相続税 rate tables): the theorem that they are equal carries `@[csimp]`. The library functions call the spec, and the compiler replaces those calls with calls to the faster formula.
-- The spec agrees only under a condition (period computations, for dates that exist): a separate implementation does the computation and the library functions call it. A theorem proves it agrees with the spec.
-- The provision fixes a property of the result (rolling over to the first day that isn't a holiday, for example): there is one function, and a theorem proves the property. Most theorems take this form, including monotonicity and the upper bound on the difference rounding makes.
+For the 所得税 and 相続税 rate tables, the spec that adds up the tax bracket by bracket and the NTA quick formula give the same tax on every amount. The theorem that they are equal carries `@[csimp]`, which makes the compiler rewrite calls to the spec into calls to the quick formula. The library functions call the spec in the source, and the quick formula is what runs.
 
-The CLI calls the library functions as they are.
+For periods, a separate implementation computes on day numbers (days from a fixed date), and the library functions call it. A theorem proves that it agrees with the spec, but only for dates that exist, so `@[csimp]` can't be used.
 
-The comments in the source are in Japanese. The header of each file lists the provisions it implements, which definitions are specs and which are implementations, and the theorems about them.
+Rolling an expiry that falls on a holiday over to the first day that isn't one is not a procedure but a condition the result has to meet. For computations like this there is one function, and a theorem proves that its result meets the condition. Most theorems take this form, including monotonicity and the upper bound on the difference rounding makes.
+
+The comments in the source are in Japanese. The header of each file lists the provisions it implements, which definitions are specs and which are implementations, and what each theorem proves.
 
 `docs/basis.md` is a table from each provision to its spec, implementation, and theorems. `docs/interpretation.md` records how each provision was read when it was implemented.
 
