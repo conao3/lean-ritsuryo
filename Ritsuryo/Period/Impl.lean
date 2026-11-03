@@ -5,7 +5,7 @@ public import Ritsuryo.Period.Spec.TaxGeneral10
 meta import Ritsuryo.Basis
 
 /-!
-# 期間の計算（CLI が実行する実装。民法 第140条・第141条・第143条、国税通則法 第10条第1項）
+# 期間の計算（計算に使う実装。民法 第140条・第141条・第143条、国税通則法 第10条第1項）
 
 CLI の `period compute-expiry` などが実行する期間の計算。日付を通算日（`Date.toDays`。ある基準日からの日数を表す整数）に移し、
 日・週の加算と前日を整数の足し算・引き算で求める。月・年の計算は年月の通し番号（`YearMonth.addMonths`）で行う。

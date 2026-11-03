@@ -7,7 +7,7 @@ meta import Ritsuryo.Basis
 # 民法 第138条〜第143条（期間の計算の仕様）
 
 民法の期間の計算（初日不算入、末日の終了で満了、暦による計算と応当日）を、条文の言葉どおりに書いた仕様。
-CLI が実際に動かす計算（通算日による計算）は `Ritsuryo/Period/Impl.lean` にあり、
+実際の計算に使う実装（通算日による計算）は `Ritsuryo/Period/Impl.lean` にあり、
 PER-1（`per1_compute_eq_spec`）が両者の一致を示す。
 
 このファイルの定義は条文の語に対応する。

@@ -90,7 +90,7 @@ The three provisions say the period ends on "the next day" (その翌日) and do
 
 ## 所得税法 第89条
 
-- The tax is the sum over the brackets of the table (`incomeTaxCentsSpec`); the CLI uses the NTA quick formula (税率 × 金額 − 控除額). TAX-1 proves they agree on every amount. The table applies from 平成27年分 (2015); earlier years exit with 254.
+- The tax is the sum over the brackets of the table (`incomeTaxCentsSpec`); the implementation uses the NTA quick formula (税率 × 金額 − 控除額). TAX-1 proves they agree on every amount. The table applies from 平成27年分 (2015); earlier years exit with 254.
 - 課税山林所得金額: one fifth of the amount is taxed by the table and the result multiplied by five (TAX-5). A 1,000-yen-floored amount is divisible by five, so the fifth has no fraction.
 - 基準所得税額 is taken to be the 第89条 tax: tax credits (配当控除, 外国税額控除) and the 特定の基準所得金額の課税の特例 (租税特別措置法 第41条の19) are outside the library.
 - 復興特別所得税 is 2.1% for 2013〜2026 (復興財源確保法 第9条・第13条) and 1.1% for 2027〜2047 (the same law as amended by 令和8年法律第12号, whose 附則第88条第1項 applies the new rate from 令和9年分). 防衛特別所得税 is 1% from 2027 (防衛財源確保法 第5条の5・第5条の9). Each is floored to 1 yen.

@@ -433,7 +433,7 @@ Lean checks every theorem during `lake build`. No theorem's proof uses `sorry`, 
 | CAL-4 | `Date.cal4_nextDate` | the naive next day (month end, year end, leap years by cases) is day number + 1 |
 | CAL-5 | `Date.cal5_weekday` | the weekday is the day number mod 7, and the next day has the next weekday |
 | CAL-6 | `Date.cal6_daysInMonth` | month lengths match the day numbers, and February has 29 days exactly when 閏年ニ関スル件 (in 皇紀) makes the year a leap year |
-| PER-1 | `Period.per1_compute_eq_spec` | the CLI's start date, corresponding day, and last day equal the 民法 140・143 条 spec |
+| PER-1 | `Period.per1_compute_eq_spec` | the implementation's start date, corresponding day, and last day equal the 民法 140・143 条 spec |
 | PER-2 | `Period.per2_from_beginning` | the 143 条 2 項 formula gives the calendar result for periods starting on the 1st, on 1 January, and on Sunday |
 | PER-3 | `Period.per3_weeks_years` | n weeks equals 7n days; n years equals 12n months |
 | PER-4 | `Period.per4_not_additive`, `Period.per4_bound` | 1 month + 1 month from 2025-01-31 ends on 03-31 but 2 months ends on 03-30; chaining is always 0〜3 days later |
@@ -449,17 +449,17 @@ Lean checks every theorem during `lake build`. No theorem's proof uses `sorry`, 
 | HOL-2 | `Holiday.hol2_nthMonday` | `nthMonday` returns a Monday whose day is in the n-th 7-day block of the month |
 | HOL-C1 (check) | `Holiday.holc1_csv_rest_days` | for every year in the CSV, deriving 3 条 2 項・3 項 (in the version in force on each day) from the non-"休日" rows yields exactly the "休日" rows; decided by the kernel |
 | HOL-C2 (check) | `Holiday.holc2_csv_article2` | for every year in the CSV, the 2 条 rules with their periods in force (and the 2020・2021 Olympic dates) generate exactly the CSV's 国民の祝日 rows, with one 春分の日 and one 秋分の日 taken from the CSV; decided by the kernel |
-| TAX-1 | `Tax.Income.tax1_quick_eq_spec` | the NTA quick formula for 所得税 equals the 89 条 sum over brackets for every amount, and the CLI's tax equals the bracket sum on the 1,000-yen-floored amount |
+| TAX-1 | `Tax.Income.tax1_quick_eq_spec` | the NTA quick formula for 所得税 equals the 89 条 sum over brackets for every amount, and the implementation's tax equals the bracket sum on the 1,000-yen-floored amount |
 | TAX-2 | `Tax.Inheritance.tax2_quick_eq_spec` | the same for the 相続税法 16 条 table |
 | TAX-3 | `Tax.Income.tax3_monotone` | the tax, the base minus the tax, and the base minus the 100-yen-floored tax are monotone in the income |
-| TAX-4 | `Tax.Income.tax4_marginal_rate` | the bracket sum grows by 5% to 45% of the increase; the CLI's tax within 999 yen of slack |
-| TAX-5 | `Tax.Income.tax5_timber` | the CLI's 山林所得 tax equals five times the bracket sum on one fifth of the amount, which has no fraction |
+| TAX-4 | `Tax.Income.tax4_marginal_rate` | the bracket sum grows by 5% to 45% of the increase; the implementation's tax within 999 yen of slack |
+| TAX-5 | `Tax.Income.tax5_timber` | the implementation's 山林所得 tax equals five times the bracket sum on one fifth of the amount, which has no fraction |
 | RND-1 | `Tax.rnd1_floorTo` | flooring to k yen is at most the amount, less than k below it, a multiple of k, idempotent, and monotone |
 | RND-2 | `Tax.rnd2_incidentalFinal` | the 附帯税 rounding (dropped below 1,000 or 5,000 yen) is monotone, at most the amount, and 0 or at least the minimum |
 | CON-1 | `Tax.Consumption.con1_combined_rate` | 7.8% and 6.24% plus 22/78 of themselves are 10% and 8% |
 | CON-2 | `Tax.Consumption.con2_per_rate_rounding` | rounding each of n items and rounding the total differ by at most n − 1 yen, for every rounding mode and price basis |
 | DEL-1 | `Tax.Delinquency.del1_special_rates_le` | the special 延滞税 rates never exceed 7.3% and 14.6%, and the 利子税 rate never exceeds 7.3% |
-| DEL-2 | `Tax.Delinquency.del2_additive_monotone` | the unfloored amount (the sum over days of tax × rate) is additive over splitting the period, monotone in the tax and the length, and equals the sum over the CLI's segments |
+| DEL-2 | `Tax.Delinquency.del2_additive_monotone` | the unfloored amount (the sum over days of tax × rate) is additive over splitting the period, monotone in the tax and the length, and equals the sum over the implementation's segments |
 | PEN-1 | `Tax.Penalty.pen1_no_return_tiers` | the 無申告加算税 tiers of 66 条 3 項 equal the 2 項 wording up to 300万円 and are monotone in the tax |
 | INH-1 | `Tax.Inheritance.inh1_statutory_shares` | the 民法 900 条 shares are positive and sum to 1, and a half-blood sibling gets half of a full-blood sibling |
 

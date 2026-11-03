@@ -12,7 +12,7 @@ meta import Ritsuryo.Basis
 - 第1項: 日・月・年の三つの単位の期間を `TaxLength` で表し、起算日（`startDateSpec`、初日不算入）と
   末日（`expiryFromStartSpec`、応当日の前日、応当日がないときはその月の末日）を条文どおりに書く。
   民法の仕様とは独立に書き、PER-7（`per7_national_tax_general`）が民法の仕様と同じ末日になることと、
-  CLI の `computeTax` がこの仕様と一致することを示す。
+  実装の `computeTax` がこの仕様と一致することを示す。
 - 第2項: 期限が日曜日・祝日法の休日・その他一般の休日・土曜日・12月29日〜31日に当たるときは、翌日が期限になる
   （`isHolidaySpec`）。国税通則法基本通達は1月2日・1月3日を一般の休日に含めるので、その扱いを入力で選べる。
   ROL-3 が、1月2日・1月3日を含めたときの集合が民事訴訟法第95条第3項の集合と同じになることを示す。
@@ -43,7 +43,7 @@ inductive TaxLength where
 
 namespace TaxLength
 
-/-- 国税の期間の長さを、民法の期間の長さ（`Length`）の同じ単位に移す。CLI はこれで民法の計算を使う。 -/
+/-- 国税の期間の長さを、民法の期間の長さ（`Length`）の同じ単位に移す。実装はこれで民法の計算を使う。 -/
 @[ritsuryo_basis "国税通則法" "第10条第1項"]
 def toLength : TaxLength → Length
   | .days n => .days n

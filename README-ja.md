@@ -433,7 +433,7 @@ CLI はキーが PascalCase の JSON オブジェクトを出力する。
 | CAL-4 | `Date.cal4_nextDate` | 素朴な翌日（月末、年末、閏年を場合分け）は通日 + 1 |
 | CAL-5 | `Date.cal5_weekday` | 曜日は通日の 7 の剰余で、翌日は次の曜日 |
 | CAL-6 | `Date.cal6_daysInMonth` | 月の日数が通日と合い、2 月が 29 日になるのは閏年ニ関スル件（皇紀で定める）が閏年とする年に限る |
-| PER-1 | `Period.per1_compute_eq_spec` | CLI の起算日、応当日、末日が民法 140 条、143 条の仕様と一致する |
+| PER-1 | `Period.per1_compute_eq_spec` | 実装の起算日、応当日、末日が民法 140 条、143 条の仕様と一致する |
 | PER-2 | `Period.per2_from_beginning` | 1 日、1 月 1 日、日曜日に始まる期間で、143 条 2 項の式が暦の結果と一致する |
 | PER-3 | `Period.per3_weeks_years` | n 週は 7n 日、n 年は 12n か月 |
 | PER-4 | `Period.per4_not_additive`, `Period.per4_bound` | 2025-01-31 から 1 か月 + 1 か月は 03-31 に、2 か月は 03-30 に終わる。つないだ期間はいつも 0〜3 日遅い |
@@ -449,17 +449,17 @@ CLI はキーが PascalCase の JSON オブジェクトを出力する。
 | HOL-2 | `Holiday.hol2_nthMonday` | `nthMonday` は月曜日を返し、その日はその月の n 番目の 7 日の区間にある |
 | HOL-C1（検査） | `Holiday.holc1_csv_rest_days` | CSV のすべての年で、「休日」以外の行から 3 条 2 項、3 項（その日に施行されていた版）を導くと「休日」の行がちょうど得られる。カーネルで決定する |
 | HOL-C2（検査） | `Holiday.holc2_csv_article2` | CSV のすべての年で、施行期間つきの 2 条の規定（と 2020 年、2021 年のオリンピックの日付）が CSV の国民の祝日の行をちょうど生成する。春分の日と秋分の日は CSV から 1 日ずつ取る。カーネルで決定する |
-| TAX-1 | `Tax.Income.tax1_quick_eq_spec` | 国税庁の速算表の式が、すべての金額で 89 条の区分ごとの積み上げと一致する。CLI の税額は、千円未満を切り捨てた金額での積み上げと一致する |
+| TAX-1 | `Tax.Income.tax1_quick_eq_spec` | 国税庁の速算表の式が、すべての金額で 89 条の区分ごとの積み上げと一致する。実装の税額は、千円未満を切り捨てた金額での積み上げと一致する |
 | TAX-2 | `Tax.Inheritance.tax2_quick_eq_spec` | 相続税法 16 条の税率表について同じことを示す |
 | TAX-3 | `Tax.Income.tax3_monotone` | 税額、課税所得から税額を引いた額、課税所得から百円未満を切り捨てた税額を引いた額が、所得について単調 |
-| TAX-4 | `Tax.Income.tax4_marginal_rate` | 積み上げの額は増えた分の 5%〜45% だけ増える。CLI の税額は 999 円の幅を除いて同じ |
-| TAX-5 | `Tax.Income.tax5_timber` | CLI の山林所得の税額は、五分の一の金額（端数は出ない）での積み上げの 5 倍 |
+| TAX-4 | `Tax.Income.tax4_marginal_rate` | 積み上げの額は増えた分の 5%〜45% だけ増える。実装の税額は 999 円の幅を除いて同じ |
+| TAX-5 | `Tax.Income.tax5_timber` | 実装の山林所得の税額は、五分の一の金額（端数は出ない）での積み上げの 5 倍 |
 | RND-1 | `Tax.rnd1_floorTo` | k 円未満の切捨ては、もとの額以下で、差は k 未満で、k の倍数で、冪等で、単調 |
 | RND-2 | `Tax.rnd2_incidentalFinal` | 附帯税の端数処理（千円未満、五千円未満は切り捨てて 0）は単調で、もとの額以下で、0 か最低額以上 |
 | CON-1 | `Tax.Consumption.con1_combined_rate` | 7.8% と 6.24% に、その 22/78 を足すと 10% と 8% |
 | CON-2 | `Tax.Consumption.con2_per_rate_rounding` | n 件をそれぞれ端数処理した合計と、合計を端数処理した額の差は、どの端数処理でも、税抜と税込のどちらでも n − 1 円以下 |
 | DEL-1 | `Tax.Delinquency.del1_special_rates_le` | 延滞税の特例の割合は 7.3% と 14.6% を超えず、利子税の割合は 7.3% を超えない |
-| DEL-2 | `Tax.Delinquency.del2_additive_monotone` | 端数処理前の額（日ごとの税額 × 割合の合計）は期間を分けても変わらず、税額と日数について単調で、CLI の区間の合計と一致する |
+| DEL-2 | `Tax.Delinquency.del2_additive_monotone` | 端数処理前の額（日ごとの税額 × 割合の合計）は期間を分けても変わらず、税額と日数について単調で、実装の区間の合計と一致する |
 | PEN-1 | `Tax.Penalty.pen1_no_return_tiers` | 66 条 3 項の無申告加算税の段階は 300 万円までは 2 項の文言と一致し、税額について単調 |
 | INH-1 | `Tax.Inheritance.inh1_statutory_shares` | 民法 900 条の相続分は正で合計が 1 になり、半血の兄弟姉妹は全血の兄弟姉妹の二分の一 |
 

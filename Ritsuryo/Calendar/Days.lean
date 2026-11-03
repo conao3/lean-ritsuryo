@@ -16,7 +16,7 @@ meta import Ritsuryo.Basis
 期間計算や祝日の証明は日付をこの整数に移して述べ、線形算術の決定手続き `omega` で閉じる。
 そのために、変換が全単射であること（CAL-1、CAL-2）、日付の順序と日数の順序が一致すること（CAL-3）、
 素朴な翌日 `nextDate` が日数で 1 進むこと（CAL-4）を `Ritsuryo.Calendar.Proofs` で証明する。
-CLI は `ofDays (toDays d + n)` で `n` 日後を求め、期間計算の仕様は `nextDate` を `n` 回繰り返す。
+実装は `ofDays (toDays d + n)` で `n` 日後を求め、期間計算の仕様は `nextDate` を `n` 回繰り返す。
 この 2 つが同じ日になることが上の定理から従う。
 
 ## 計算のしかた

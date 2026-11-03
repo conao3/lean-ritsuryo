@@ -7,7 +7,7 @@ meta import Ritsuryo.Basis
 /-!
 # 年齢計算の証明（AGE-1、AGE-2）
 
-- AGE-1（`age1_attainment`）: CLI の `attainmentDate`（通算日による計算）が仕様 `attainmentSpec` と一致し、
+- AGE-1（`age1_attainment`）: 実装の `attainmentDate`（通算日による計算）が仕様 `attainmentSpec` と一致し、
   `n` 年後の誕生日の前日（その月に誕生日の日付がなければ月の末日）になる。2月29日生まれは毎年2月28日に年を取る。
 - AGE-2（`age2_monotone_and_steps`）: `ageOn` が返す年齢 `n` について、`n` 歳に達する日 ≤ その日 < `n + 1` 歳に達する日が
   成り立ち、年齢は日付について単調で、達する日ごとにちょうど 1 増える。
@@ -195,7 +195,7 @@ theorem ageOn_unique (birth asOf : Date) (hb : birth.Valid) (hd : asOf.Valid)
       omega
     · omega
 
-/-- AGE-1: CLI の `attainmentDate` は仕様 `attainmentSpec` と等しく、`n` 年後の誕生日の前日（その月に誕生日の日付が
+/-- AGE-1: 実装の `attainmentDate` は仕様 `attainmentSpec` と等しく、`n` 年後の誕生日の前日（その月に誕生日の日付が
 なければ月の末日）になる。2月29日生まれは、閏年には2月29日の前日、平年には2月の末日として、どちらも2月28日に `n` 歳になる。
 前半は `attainmentDate_eq` と `attainment_formula`、2月29日は `n` 年後が閏年かで場合分けする。 -/
 @[ritsuryo_proof "AGE-1", ritsuryo_basis "年齢計算ニ関スル法律" "第2項",

@@ -27,7 +27,7 @@ theorem quickCents_le (x : Nat) : quickCents x ≤ 45 * x := by
   all_goals omega
 
 /-- 速算表の式と、第89条の区分ごとの積み上げが、すべての金額で一致する。
-CLI が使う `taxOn` は、千円未満を切り捨てた金額に対する積み上げの税額（を円にしたもの）と等しい。 -/
+実装の `taxOn` は、千円未満を切り捨てた金額に対する積み上げの税額（を円にしたもの）と等しい。 -/
 @[ritsuryo_proof "TAX-1", ritsuryo_basis "所得税法" "第89条第1項"]
 theorem tax1_quick_eq_spec (x : Nat) :
     quickCents x = incomeTaxCentsSpec x ∧ 100 * taxOn x = incomeTaxCentsSpec (taxBase x) := by
@@ -88,7 +88,7 @@ theorem tax3_monotone (x y : Nat) (h : x ≤ y) :
   simp only [taxOn, finalAmount, floorTo, taxBase] at *
   omega
 
-/-- 5 分 5 乗（TAX-5）。CLI の `timberTaxOn` は、第89条第1項の「課税山林所得金額の五分の一に相当する金額を
+/-- 5 分 5 乗（TAX-5）。実装の `timberTaxOn` は、第89条第1項の「課税山林所得金額の五分の一に相当する金額を
 …区分して…合計した金額に五を乗じて計算した金額」と一致する。千円未満を切り捨てた金額は 5 で割り切れるので、
 五分の一に端数は出ない。 -/
 @[ritsuryo_proof "TAX-5", ritsuryo_basis "所得税法" "第89条第1項"]

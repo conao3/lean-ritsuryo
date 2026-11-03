@@ -7,7 +7,7 @@ meta import Ritsuryo.Basis
 /-!
 # 祝日法 第2条・第3条の証明（HOL-1、HOL-2）
 
-- HOL-1（`hol1_derivation`）: CLI が実行する `isSubstitute`・`isCitizens` が、第3条第2項・第3項の文言を写した
+- HOL-1（`hol1_derivation`）: 実装の `isSubstitute`・`isCitizens` が、第3条第2項・第3項の文言を写した
   `SubstituteSpec`・`CitizensSpec` と、国民の祝日の集合 `H` によらず一致する。
 - HOL-2（`hol2_nthMonday`）: 第2条の「第 n 月曜日」を計算する `nthMonday` が、有効な日付の月曜日を返し、
   その日が月の第 `n` 週（`7 * (n - 1)` 日より後で `7 * n` 日以前）に入る。

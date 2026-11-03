@@ -103,7 +103,7 @@ def prevDate (d : Date) : Date :=
     ⟨d.year - 1, 12, 31⟩
 
 /-- `d` から `n` 日後の日付を、`nextDate` を `n` 回繰り返して求める。暦を 1 日ずつめくる数え方そのもので、
-期間計算の仕様が日を数えるのに使う。CLI は日数の足し算（`ofDays (toDays d + n)`）で同じ日を求める。 -/
+期間計算の仕様が日を数えるのに使う。実装は日数の足し算（`ofDays (toDays d + n)`）で同じ日を求める。 -/
 @[ritsuryo_basis "改暦ノ布告" "本則"]
 def addDaysNaive (d : Date) : Nat → Date
   | 0 => d

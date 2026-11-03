@@ -12,7 +12,7 @@ meta import Ritsuryo.Basis
 翌日も休日のときについて条文は書いていないので、休日でない最初の日まで繰り下げる
 （民事訴訟法第95条第3項では、末日が12月29日なら1月4日になる）。CLI はこの読み方を `Assumptions` に出す。
 
-- `rolloverDays`・`rollover`: CLI が実行する繰り下げ。日付を通算日に移し、休日である間 1 を足す。
+- `rolloverDays`・`rollover`: 計算に使う繰り下げの実装。日付を通算日に移し、休日である間 1 を足す。
 - `RolloverRule`: どの規定で繰り下げるかの選択。`isHoliday` が各規定の仕様（`isHolidaySpec`）を返す。
 
 ROL-1（`rol1_least_non_holiday`）が、結果がもとの日以後で休日でない最初の日であることを示す。

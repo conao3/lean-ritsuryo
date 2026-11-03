@@ -21,7 +21,7 @@ e-Gov 法令履歴 `323AC1000000178_20200101_430AC1000000057`。
 このファイルは、現行の第3条第2項（振替休日）と第3項（国民の休日）を 2 通りに書く。
 
 - 仕様 `SubstituteSpec`・`CitizensSpec`: 条文の文言をそのまま `Prop` にしたもの。
-- 実装 `isSubstitute`・`isCitizens`: CLI が実行する `Bool` の関数。
+- 実装 `isSubstitute`・`isCitizens`: 計算に使う `Bool` の関数。
 
 どちらも「国民の祝日」の集合を引数 `H : Int → Bool`（日番号 → 国民の祝日かどうか）で受け取り、日を
 日番号（`Date.toDays`）で表す。両者が一致することは `Ritsuryo/Holiday/Proofs.lean` の HOL-1 で証明する。

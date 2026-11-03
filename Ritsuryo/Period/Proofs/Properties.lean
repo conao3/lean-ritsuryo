@@ -283,7 +283,7 @@ theorem per4_bound (s : Date) (h : s.Valid) (a b : Nat) :
     · simp only [hd2, ↓reduceIte]
       omega
 
-/-- PER-5: CLI の `compute` の末日は、出来事の日について単調で（出来事が遅いほど末日も遅いか同じ）、
+/-- PER-5: 実装の `compute` の末日は、出来事の日について単調で（出来事が遅いほど末日も遅いか同じ）、
 同じ単位の期間の長さについても単調。日付は有効性を仮定せず、通算日を日付に戻した起算日（常に有効）について示す。
 出来事の日については `expiryFromStart_mono_start`、長さについては日・週は通算日の足し算、月・年は `months_mono_length` による。 -/
 @[ritsuryo_proof "PER-5", ritsuryo_basis "民法" "第140条", ritsuryo_basis "民法" "第143条第2項"]
@@ -397,7 +397,7 @@ theorem taxGeneral_fromStart (start : Date) (len : TaxLength) :
     by_cases hd : start.day ≤ (⟨start.year + n, start.month⟩ : YearMonth).daysInMonth <;> simp [hd]
 
 /-- PER-7: 国税通則法第10条第1項の仕様は、日・月・年の期間について民法の仕様と同じ末日になり、
-CLI の `computeTax` の末日は国税通則法の仕様と一致する。起算日の定義が同じなので `taxGeneral_fromStart` で前半を示し、
+実装の `computeTax` の末日は国税通則法の仕様と一致する。起算日の定義が同じなので `taxGeneral_fromStart` で前半を示し、
 後半は前半と PER-1 を組み合わせる。 -/
 @[ritsuryo_proof "PER-7", ritsuryo_basis "国税通則法" "第10条第1項"]
 theorem per7_national_tax_general (event : Date) (h : event.Valid) (startAtMidnight : Bool)

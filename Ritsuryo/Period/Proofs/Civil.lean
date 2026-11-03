@@ -6,7 +6,7 @@ meta import Ritsuryo.Basis
 /-!
 # 民法 第140条・第143条の実装と仕様の一致（PER-1）
 
-CLI が実行する `compute`（通算日による計算）が、民法第140条・第143条第2項の言葉どおりに書いた仕様
+実装の `compute`（通算日による計算）が、民法第140条・第143条第2項の言葉どおりに書いた仕様
 （`Civil.startDateSpec`・`Civil.correspondingDaySpec`・`Civil.expirySpec`）と、有効なすべての日付で一致することを示す。
 
 証明は仕様の部品ごとに実装との等式を作り、最後に組み合わせる。
@@ -182,7 +182,7 @@ theorem start_spec (event : Date) (h : event.Valid) (startAtMidnight : Bool) :
     simp only [startDays, Civil.startDateSpec, Bool.false_eq_true, ↓reduceIte]
     exact ⟨(nextDate_eq_ofDays event h).symm, (toDays_nextDate event h).2⟩
 
-/-- PER-1: 有効な日付 `event` について、CLI の `compute` が返す起算日・応当日・末日は、民法第140条・第143条第2項の
+/-- PER-1: 有効な日付 `event` について、実装の `compute` が返す起算日・応当日・末日は、民法第140条・第143条第2項の
 仕様と一致する。`start_spec` で起算日を揃え、その起算日に `correspondingDays_spec` と `expiryFromStart_spec` を当てる。 -/
 @[ritsuryo_proof "PER-1", ritsuryo_basis "民法" "第140条", ritsuryo_basis "民法" "第143条第2項"]
 theorem per1_compute_eq_spec (event : Date) (h : event.Valid) (startAtMidnight : Bool)

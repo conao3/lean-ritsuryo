@@ -17,7 +17,7 @@ theorem quickCents_dvd (x : Nat) (h : x % 200 = 0) : quickCents x % 100 = 0 := b
   all_goals omega
 
 /-- 速算表の式と第16条の区分ごとの積み上げが、すべての取得金額で一致する。千円の倍数の取得金額では、
-CLI の `taxOn`（円）は積み上げの額を円にしたものと等しい。 -/
+実装の `taxOn`（円）は積み上げの額を円にしたものと等しい。 -/
 @[ritsuryo_proof "TAX-2", ritsuryo_basis "相続税法" "第16条"]
 theorem tax2_quick_eq_spec (x : Nat) :
     quickCents x = taxCentsSpec x ∧ (x % 1000 = 0 → 100 * taxOn x = taxCentsSpec x) := by
