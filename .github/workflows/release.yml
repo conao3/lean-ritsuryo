@@ -22,7 +22,7 @@ jobs:
             target: aarch64-darwin
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - name: Install elan
         run: |
           curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
@@ -40,7 +40,7 @@ jobs:
           mkdir -p dist
           tar -czf "dist/ritsuryo-${{ matrix.target }}.tar.gz" -C .lake/build/bin ritsuryo \
             -C "$GITHUB_WORKSPACE" LICENSE README.md
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4.6.2
         with:
           name: ritsuryo-${{ matrix.target }}
           path: dist/ritsuryo-${{ matrix.target }}.tar.gz
@@ -52,7 +52,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.3.0
         with:
           path: dist
           merge-multiple: true
