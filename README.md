@@ -15,13 +15,15 @@ It covers these provisions:
 - 加算税: 国税通則法 第65条〜第68条
 - Rounding: 国税通則法 第118条, 第119条
 
-Each computation has 2 definitions. One is the spec, which copies the structure of the provision as it is. The other is the implementation used for the actual computation. Programs using the library and the CLI both compute through the implementation.
+Definitions copy the structure of the provision as closely as they can; these are the specs. Lean definitions run as they are, so where a spec works for the computation, no other definition is written. Whether it does sorts the code into 3 cases:
 
-Where the spec and the implementation are equal on every input, as with the 所得税 and 相続税 rate tables, the library functions call the spec. The theorem that they are equal carries `@[csimp]`, so the compiler replaces calls to the spec with calls to the implementation.
+- The spec equals a faster formula on every input (the 所得税 and 相続税 rate tables): the theorem that they are equal carries `@[csimp]`. The library functions call the spec, and the compiler replaces those calls with calls to the faster formula.
+- The spec agrees only under a condition (period computations, for dates that exist): a separate implementation does the computation and the library functions call it. A theorem proves it agrees with the spec.
+- The provision fixes a property of the result (rolling over to the first day that isn't a holiday, for example): there is one function, and a theorem proves the property. Most theorems take this form, including monotonicity and the upper bound on the difference rounding makes.
 
-The theorems prove that the spec and the implementation return the same value on every input. They also prove other properties, such as monotonicity, that the rollover rules return the first day that isn't a holiday, and an upper bound on the difference rounding makes.
+The CLI calls the library functions as they are.
 
-The comments in the source are in Japanese. The header of each file lists the provisions it implements, which definitions are the spec, and the theorem that proves the spec and the implementation agree.
+The comments in the source are in Japanese. The header of each file lists the provisions it implements, which definitions are specs and which are implementations, and the theorems about them.
 
 `docs/basis.md` is a table from each provision to its spec, implementation, and theorems. `docs/interpretation.md` records how each provision was read when it was implemented.
 
