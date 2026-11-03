@@ -2,9 +2,26 @@
 
 [日本語](README-ja.md)
 
-Japanese statutory period and tax computations implemented in Lean 4, with proofs attached to the functions the CLI runs. Periods: 民法 第140条〜第143条, 年齢計算ニ関スル法律, 国税通則法 第10条, 民事訴訟法 第95条・第285条・第313条・第332条, 所得税法 第120条, and 国民の祝日に関する法律 第2条・第3条. Taxes: 所得税法 第89条 with 復興特別所得税 and 防衛特別所得税, 相続税法 第15条・第16条 with 民法 第900条, 消費税 (消費税法 第29条, 消費税法施行令 第70条の10), 延滞税・利子税 (国税通則法 第60条, 租税特別措置法 第93条・第94条), 加算税 (国税通則法 第65条〜第68条), and the rounding of 国税通則法 第118条・第119条. The Lake package and the CLI are `ritsuryo`.
+lean-ritsuryo implements Japanese statutory period and tax computations in Lean 4, with proofs attached to the functions the CLI runs. The Lake package and the CLI are both named `ritsuryo`.
 
-Each computation has two definitions: a spec that copies the structure of the provision, and an implementation the CLI runs. The theorems prove that they agree on every input, plus properties such as monotonicity, the least-holiday property of the rollover rules, and bounds on rounding. The source is commented in Japanese: each file says which provisions it implements, which definitions are the spec, and which theorem ties them to the implementation. `docs/basis.md` maps every provision to its spec, implementation, and theorems; `docs/interpretation.md` records how each provision is read.
+It covers these provisions:
+
+- Periods: 民法 第140条〜第143条, 年齢計算ニ関スル法律, 国税通則法 第10条, 民事訴訟法 第95条, 第285条, 第313条, 第332条, 所得税法 第120条
+- Holidays: 国民の祝日に関する法律 第2条, 第3条
+- 所得税: 所得税法 第89条, with 復興特別所得税 and 防衛特別所得税
+- 相続税: 相続税法 第15条, 第16条, with the shares of 民法 第900条
+- 消費税: 消費税法 第29条, 消費税法施行令 第70条の10
+- 延滞税 and 利子税: 国税通則法 第60条, 租税特別措置法 第93条, 第94条
+- 加算税: 国税通則法 第65条〜第68条
+- Rounding: 国税通則法 第118条, 第119条
+
+Each computation has two definitions. The spec copies the structure of the provision, and the implementation is what the CLI runs.
+
+The theorems prove that the two agree on every input. They also prove properties such as monotonicity, the rollover rules landing on the first day that isn't a holiday, and bounds on rounding.
+
+The source is commented in Japanese. The header of each file names the provisions it implements, the spec definitions, and the theorem that ties them to the implementation.
+
+`docs/basis.md` maps each provision to its spec, implementation, and theorems. `docs/interpretation.md` records how each provision is read.
 
 ## Install
 
@@ -20,11 +37,15 @@ With Nix: `nix run github:conao3/lean-ritsuryo -- help`.
 
 ## Examples
 
-Every command prints a JSON object with `Result`, `Steps`, `Basis`, `Assumptions`, `Data`, and `SchemaVersion` (see [CLI](#cli)). The examples below use `--query` to show the part that matters; the outputs are copied from the CLI.
+Every command prints a JSON object with `Result`, `Steps`, `Basis`, `Assumptions`, `Data`, and `SchemaVersion` (see [Output](#output)).
+
+The examples below use `--query` to show the part that matters. The outputs are copied from the CLI.
 
 ### 所得税
 
-課税総所得金額 7,000,000 円 for 2026 年分. 974,000 円 is the NTA quick-table result (7,000,000 × 23% − 636,000); 復興特別所得税 is 2.1% of it, rounded down to the yen, and the total is rounded down to 100 yen.
+For 2026 年分 with 課税総所得金額 7,000,000 円, the 所得税 is 974,000 円. That matches the NTA quick table (7,000,000 × 23% − 636,000).
+
+復興特別所得税 adds 2.1% of it, rounded down to the yen. `Payable` is the total rounded down to 100 yen.
 
 ```console
 $ ritsuryo income-tax compute-tax --tax-year 2026 --taxable-income 7000000
@@ -119,7 +140,9 @@ $ echo $?
 
 ### 相続税
 
-課税価格の合計 2 億円, a spouse and two children. The 基礎控除 is 3,000 万円 + 600 万円 × 3; each heir's share of the remainder goes through the 16 条 table, and the sum is the 相続税の総額.
+Take 課税価格の合計 of 2 億円, a spouse, and two children. The 基礎控除 is 3,000 万円 + 600 万円 × 3 = 4,800 万円.
+
+Each heir's statutory share of the remaining 1 億 5,200 万円 goes through the 16 条 table. The 相続税の総額 is the sum.
 
 ```console
 $ ritsuryo inheritance-tax compute-total-tax --taxable-value-total 200000000 --spouse --biological-children 2 --query '{Result: Result, Steps: Steps}'
@@ -169,7 +192,7 @@ half-sibling	1/20
 
 ### 消費税
 
-The tax on an 適格請求書, per rate. `--items` takes the shorthand syntax; `--price-basis inclusive` takes tax-inclusive prices.
+The tax on an 適格請求書, per rate. `--items` takes the shorthand syntax, and `--price-basis inclusive` switches to tax-inclusive prices.
 
 ```console
 $ ritsuryo consumption-tax compute-invoice-tax --items Price=1000,Rate=standard Price=540,Rate=reduced --rounding half-up --query Result
@@ -194,7 +217,9 @@ $ ritsuryo consumption-tax compute-invoice-tax --items Price=1000,Rate=standard 
 
 ### 延滞税・利子税・加算税
 
-延滞税 on 1,000,000 円 with 法定納期限 2026-03-16, paid on 2026-07-31. The period splits at two months after the 納期限; each segment is floored to the yen, and the sum to 100 yen.
+延滞税 on 1,000,000 円 with 法定納期限 2026-03-16, paid on 2026-07-31. The rate goes up two months after the 納期限, so the period splits there.
+
+Each segment is rounded down to the yen, and the sum to 100 yen.
 
 ```console
 $ ritsuryo delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16 --payment-date 2026-07-31 --query Result
@@ -221,7 +246,9 @@ $ ritsuryo interest-tax compute-tax --tax 1000000 --from-date 2026-03-16 --to-da
 }
 ```
 
-無申告加算税 on 4,000,000 円 with the default `--timing after-prediction` (a return filed after the 決定 was foreseen, or the 決定 itself): 15% up to 50 万円, 20% up to 300 万円, 30% above (国税通則法 66 条 1 項・3 項).
+無申告加算税 on 4,000,000 円, with the default `--timing after-prediction` (a return filed after the 決定 was foreseen, or the 決定 itself).
+
+The rate is 15% up to 50 万円, 20% up to 300 万円, and 30% above that (国税通則法 66 条 1 項, 3 項).
 
 ```console
 $ ritsuryo penalty-tax compute-tax --kind no-return --tax 4000000 --query Result
@@ -232,7 +259,7 @@ $ ritsuryo penalty-tax compute-tax --kind no-return --tax 4000000 --query Result
 
 ### 期間・期限
 
-控訴期間 for a judgment served on 2026-12-15. Two weeks end on 2026-12-29, which falls in the 年末年始; 民事訴訟法 95 条 3 項 moves the end to 2027-01-04.
+控訴期間 for a judgment served on 2026-12-15. Two weeks end on 2026-12-29, inside the 年末年始, so 民事訴訟法 95 条 3 項 moves the end to 2027-01-04.
 
 ```console
 $ ritsuryo deadline compute-appeal-deadline --served-date 2026-12-15 --query '{Result: Result, RolledOver: Steps.RolledOverDays[].Date}'
@@ -253,7 +280,7 @@ $ ritsuryo deadline compute-appeal-deadline --served-date 2026-12-15 --query '{R
 }
 ```
 
-One month from 2026-01-31 ends on 2026-02-28: the corresponding day 2026-02-31 does not exist, so the period ends at the end of the month (民法 143 条 2 項 ただし書).
+One month from 2026-01-31 ends on 2026-02-28. There's no 2026-02-31 to correspond to, so the period ends at the end of the month (民法 143 条 2 項 ただし書).
 
 ```console
 $ ritsuryo period compute-expiry --event-date 2026-01-31 --months 1 --query Result
@@ -305,7 +332,7 @@ $ ritsuryo holiday list-holidays --year 2027 --output text --query Result.Holida
 
 ### Input from a file
 
-`--generate-cli-skeleton input` prints a template with every parameter. `--cli-input-json` takes the parameters as JSON; keys left out take their defaults.
+`--generate-cli-skeleton input` prints a template with every parameter. `--cli-input-json` takes the parameters as JSON, and keys left out take their defaults.
 
 ```console
 $ cat input.json
@@ -328,9 +355,25 @@ $ nix build                  # build the CLI into ./result/bin/ritsuryo
 $ nix run . -- help
 ```
 
+A clean `lake build` checks every proof in about 26 s.
+
 ## CLI
 
-The CLI takes input in the AWS CLI grammar: `ritsuryo [global options] <command> <subcommand> [--parameter value ...]`. Parameters are named `--kebab-case`; booleans are `--flag` / `--no-flag`; lists are space-separated values; a value starting with `file://` is read from the file. `--cli-input-json` takes all parameters as a JSON object whose keys are the PascalCase parameter names, and `--generate-cli-skeleton input|output` prints the input or output template. Structure lists use the shorthand syntax (`--items Price=1000,Rate=standard Price=540,Rate=reduced`) or JSON. `--query` filters the output with a JMESPath expression (identifiers, sub-expressions, indexes, slices, list and object projections, flatten, filters, multi-select lists and hashes, pipes, comparisons, `||` `&&` `!`, literals, and the functions `length` `keys` `values` `sort` `reverse` `max` `min` `sum` `join` `contains` `starts_with` `ends_with` `type` `to_string` `not_null`). `help` works at every level (`ritsuryo help`, `ritsuryo period help`, `ritsuryo period compute-expiry help`).
+The CLI follows the AWS CLI grammar:
+
+```console
+$ ritsuryo [global options] <command> <subcommand> [--parameter value ...]
+```
+
+- Parameters are `--kebab-case`. Booleans are `--flag` / `--no-flag`, and lists are space-separated.
+- A value starting with `file://` is read from that file.
+- Structure lists take the shorthand syntax (`--items Price=1000,Rate=standard Price=540,Rate=reduced`) or JSON.
+- `--cli-input-json` takes every parameter as one JSON object, keyed by the PascalCase parameter names.
+- `--generate-cli-skeleton input|output` prints the input or output template.
+- `--query` filters the output with a JMESPath expression.
+- `help` works at every level: `ritsuryo help`, `ritsuryo period help`, `ritsuryo period compute-expiry help`.
+
+`--query` supports identifiers, sub-expressions, indexes, slices, list and object projections, flatten, filters, multi-select lists and hashes, pipes, comparisons, `||` `&&` `!`, and literals. The functions are `length` `keys` `values` `sort` `reverse` `max` `min` `sum` `join` `contains` `starts_with` `ends_with` `type` `to_string` `not_null`.
 
 | command | subcommand | Computes |
 |---|---|---|
@@ -352,13 +395,33 @@ The CLI takes input in the AWS CLI grammar: `ritsuryo [global options] <command>
 | `interest-tax` | `compute-tax` | 利子税 over a period |
 | `penalty-tax` | `compute-tax` | 過少申告加算税, 無申告加算税, 不納付加算税, and 重加算税 by the timing of the return or payment |
 
-Output keys are PascalCase: `Result`, `Steps` (start date, corresponding day, last day before rollover, skipped days), `Basis` (statute, provision, e-Gov law ID), `Assumptions` (the readings and inputs the result depends on), `Data` (the holiday CSV's source, Last-Modified, SHA-256, and year range when holidays were used), and `SchemaVersion`. `Data` is `{}` when no data was used. `--output` is `json` (default), `text` (tab-separated, AWS style; top-level scalars such as `SchemaVersion` come last as `KEY<TAB>value` lines), or `table`.
+### Output
 
-Exit codes: 0 success, 252 command or parameter error (including a combination the statute does not cover, such as 重加算税 before the 調査通知), 254 input outside what the computation covers (nonexistent date, a year outside the holiday data, an as-of date before the birth date, a tax year before 2015, a year without a 特例基準割合), 255 any other failure.
+The output is a JSON object with PascalCase keys:
+
+- `Result`: the answer.
+- `Steps`: the intermediate values, such as the start date, corresponding day, last day before rollover, skipped days, and tax per bracket.
+- `Basis`: the statute, provision, and e-Gov law ID behind the result.
+- `Assumptions`: the readings and inputs the result depends on.
+- `Data`: the holiday CSV's source, Last-Modified, SHA-256, and year range when holidays were used, and `{}` otherwise.
+- `SchemaVersion`.
+
+`--output` picks the format: `json` (default), `text`, or `table`. `text` is tab-separated like the AWS CLI, with top-level scalars such as `SchemaVersion` printed last as `KEY<TAB>value` lines.
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Success |
+| 252 | Command or parameter error, including a combination the statute doesn't cover (重加算税 before the 調査通知) |
+| 254 | Input outside what the computation covers: a nonexistent date, a year outside the holiday data, an as-of date before the birth date, a tax year before 2015, a year without a 特例基準割合 |
+| 255 | Any other failure |
 
 ## Proved properties
 
-All theorems are checked by `lake build`; none uses `sorry`, `admit`, or `native_decide`. `lake exe basis-report --check` fails if a public theorem depends on an axiom other than `propext`, `Classical.choice`, and `Quot.sound`, or if a design ID below has no theorem.
+`lake build` checks every theorem. None of them uses `sorry`, `admit`, or `native_decide`.
+
+`lake exe basis-report --check` fails if a public theorem depends on an axiom beyond `propext`, `Classical.choice`, and `Quot.sound`, or if a design ID below has no theorem.
 
 | ID | Theorem | Statement |
 |---|---|---|
@@ -400,35 +463,34 @@ All theorems are checked by `lake build`; none uses `sorry`, `admit`, or `native
 
 ## Holiday data
 
-`data/syukujitsu.csv` is the Cabinet Office CSV (https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv, Shift_JIS, Last-Modified 2026-02-02T00:30:17Z): 1,067 rows from 1955-01-01 to 2027-11-23, of which 116 are "休日", 2 are "休日（祝日扱い）", and 4 are special-law days (結婚の儀 ×2, 大喪の礼, 即位礼正殿の儀). `scripts/gen_holidays.py` turns it into per-year tables in `Ritsuryo/Holiday/Data/Generated.lean`; the build does not use the network. The `Holiday data` workflow downloads the CSV monthly, runs `make check` on it, and opens a pull request when it changed.
+`data/syukujitsu.csv` is the Cabinet Office CSV (https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv, Shift_JIS, Last-Modified 2026-02-02T00:30:17Z). It has 1,067 rows from 1955-01-01 to 2027-11-23: 116 "休日", 2 "休日（祝日扱い）", and 4 special-law days (結婚の儀 ×2, 大喪の礼, 即位礼正殿の儀).
 
-## Measurements
+`scripts/gen_holidays.py` turns it into per-year tables in `Ritsuryo/Holiday/Data/Generated.lean`, so the build works offline.
 
-Measured on x86_64-linux (NixOS, 14 hardware threads).
+The `Holiday data` workflow downloads the CSV monthly, runs `make check` on it, and opens a pull request when it changed.
 
-| Item | Measured | How |
-|---|---|---|
-| CLI binary (nixpkgs `lean4` 4.35.0) | 2,609,384 bytes | `stat -c %s .lake/build/bin/ritsuryo` |
-| Its shared libraries | `libstdc++`, `libgmp`, `libuv`, `libssl`, `libcrypto`, `libm`, `libdl`, `libgcc_s`, `libpthread`, `libc`, interpreter and all from `/nix/store` | `readelf -d`, `ldd` |
-| CLI startup | `--version` 7.8 ms ± 1.8 ms; `period compute-expiry` with 民訴 rollover 8.7 ms ± 1.9 ms; `income-tax compute-tax` 8.5 ms ± 2.0 ms; `delinquency-tax compute-tax` over 330 days 9.6 ms ± 2.0 ms; `holiday list-holidays --output table` 10.6 ms ± 1.9 ms; 12.8〜14.7 MiB peak memory | `hyperfine -N --warmup 20 --runs 300`, `time -f %M` |
-| CLI binary (upstream `leanprover/lean4:v4.35.0` via elan) | 3,066,224 bytes; needs only `libc`, `libm`, `libdl`, `libpthread`, `libgcc_s`, `ld-linux` (the Lean runtime, GMP, and libuv are linked statically); `--version` 5.0 ms ± 0.9 ms | `lake build ritsuryo` with the elan toolchain, `readelf -d`. On NixOS elan patches the interpreter and RUNPATH to `/nix/store`, so portability to other distributions still has to be checked on a GitHub-hosted runner |
-| Upstream toolchain | 92.5 s to install, 3,138,011,370 bytes unpacked | `elan toolchain install leanprover/lean4:v4.35.0`, `du -sb` |
-| Clean build | 26.1 s for the library, all proofs, and the CLI (`lake build` after `rm -rf .lake/build`); the longest modules are `Ritsuryo.Tax.Proofs.Income` 14 s and `Ritsuryo.Tax.Proofs.Penalty` 14 s (built in parallel), `Ritsuryo.Holiday.Check` (HOL-C1) 9.0 s, `Ritsuryo.Calendar.Proofs` 6.5 s, `Ritsuryo.Holiday.Article2Check` (HOL-C2) 4.1 s | wall clock, per-module times from Lake |
-| HOL-C1 by `decide` | 8.3 s with `decide +kernel`, 14.3 s with plain `decide`, for 1955〜2027 | `lake env lean` on the check minus the 1.0 s import baseline |
-| Every-day variant of HOL-C1 | 29 s for 10 years (3,652 days) with `decide +kernel` | the same, comparing the derivation with the CSV on every day; the shipped check evaluates only the days after a 国民の祝日 |
+## Performance
 
-Binary size depends on how the library loads its attribute. The attribute module imports `Lean`; library modules load it with `meta import`, so the CLI does not link `Lean`:
+The release binary is one 3.4 MB file (x86_64-linux). It links only the C library: the Lean runtime, GMP, and libuv are built in.
 
-| Program | Size | Startup |
-|---|---|---|
-| hello world, non-`module` `Main.lean` | 3,276,456 bytes | 8.7 ms ± 1.6 ms |
-| prints a date from the library, which loads the attribute with plain `import Lean` | 140,294,384 bytes | 48.2 ms ± 8.6 ms |
-| same program, library modules use `meta import` | 1,546,056 bytes | 8.5 ms ± 1.7 ms |
-| same program plus `import Lean.Data.Json` | 134 MiB | 51.4 ms ± 9.4 ms |
+A command finishes in about 6 ms and peaks at about 10 MiB of memory, so a script can call it once per row.
 
-The CLI therefore uses its own JSON module (`Ritsuryo/Cli/Json.lean`) rather than `Lean.Json`.
+| Command | Time |
+|---|---|
+| `--version` | 4.5 ms ± 1.3 ms |
+| `income-tax compute-tax` | 6.4 ms ± 1.2 ms |
+| `deadline compute-appeal-deadline` (rolls over 6 days) | 6.2 ms ± 1.5 ms |
+| `delinquency-tax compute-tax` (290 days) | 5.9 ms ± 1.3 ms |
+| `holiday list-holidays --output table` | 6.3 ms ± 1.2 ms |
 
-Distribution: the Nix flake (`nix run github:conao3/lean-ritsuryo`) and the GitHub releases. The `Release` workflow builds the CLI with the upstream toolchain on GitHub-hosted runners (x86_64-linux, aarch64-linux, aarch64-darwin), runs the library and CLI tests there, prints the linked libraries, and attaches the archives to a GitHub release when a `v*` tag is pushed.
+Measured with the v0.5.0 x86_64-linux release on NixOS (14 hardware threads), using `hyperfine -N --warmup 20 --runs 300`. Peak memory is 8.4〜10.5 MiB by `time -f %M`.
+
+`docs/measurements.md` has the numbers behind the build decisions: binary size by import style, the toolchain, the holiday check, and build time.
+
+## Distribution
+
+- GitHub releases (see [Install](#install)). The `Release` workflow builds the CLI with the upstream toolchain on GitHub-hosted runners, runs the library and CLI tests there, and attaches the archives to a release when a `v*` tag is pushed.
+- The Nix flake: `nix run github:conao3/lean-ritsuryo`.
 
 ## Layout
 
@@ -458,7 +520,7 @@ BasisReport.lean                     lake exe basis-report
 Tests/, TestMain.lean                lake test
 scripts/                             CSV generator, lint, CLI tests
 data/                                the Cabinet Office CSV
-docs/                                basis.md (generated), interpretation.md
+docs/                                basis.md (generated), interpretation.md, measurements.md
 ```
 
 ## License
