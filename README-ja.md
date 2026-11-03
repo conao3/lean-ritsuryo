@@ -2,9 +2,9 @@
 
 [English](README.md)
 
-日本の法令が定める期間の計算と税額の計算を Lean 4 で実装し、CLI が実行する関数に証明を付けたライブラリと CLI。Lake のパッケージ名と CLI の名前はどちらも `ritsuryo`。
+lean-ritsuryo は日本の法令が定める期間と税額の計算を Lean 4 で実装したライブラリと CLI である。CLI が実行する関数には条文どおりに計算することの証明を付けている。Lake のパッケージ名と CLI の名前はどちらも `ritsuryo` である。
 
-扱う条文は次のとおり。
+扱う条文は次のとおりである。
 
 - 期間：民法 第140条〜第143条、年齢計算ニ関スル法律、国税通則法 第10条、民事訴訟法 第95条、第285条、第313条、第332条、所得税法 第120条
 - 祝日：国民の祝日に関する法律 第2条、第3条
@@ -15,17 +15,17 @@
 - 加算税：国税通則法 第65条〜第68条
 - 端数計算：国税通則法 第118条、第119条
 
-計算ごとに定義が 2 つある。条文の構造を写した仕様と、CLI が実行する実装である。
+計算ごとに定義を 2 つ書いている。1 つは条文の構造をそのまま写した仕様で、もう 1 つは CLI が実行する実装である。
 
-定理は、両者がすべての入力で一致することを示す。単調性、繰り下げの規定が休日でない最初の日を返すこと、端数処理の誤差の上限なども示す。
+定理は仕様と実装がすべての入力で同じ値を返すことを示す。ほかに、単調性、繰り下げの規定が休日でない最初の日を返すこと、端数処理で生じる差の上限なども示す。
 
-ソースには日本語のコメントがある。各ファイルの冒頭に、実装する条文、仕様の定義、仕様と実装を結ぶ定理を書いている。
+ソースのコメントは日本語で書いている。各ファイルの冒頭にはそのファイルが実装する条文、仕様にあたる定義、仕様と実装が一致することを示す定理を書いている。
 
-`docs/basis.md` は条文ごとに仕様、実装、定理を対応づけた表。`docs/interpretation.md` は各条文の読み方の記録。
+`docs/basis.md` には条文ごとに仕様、実装、定理を対応づけた表がある。`docs/interpretation.md` には各条文をどう読んで実装したかを書いている。
 
 ## インストール
 
-[リリース](https://github.com/conao3/lean-ritsuryo/releases)から自分の環境のアーカイブを取る。x86_64-linux、aarch64-linux、aarch64-darwin の 3 種類があり、中の `ritsuryo` は C ライブラリだけで動く。
+[リリース](https://github.com/conao3/lean-ritsuryo/releases)から、使う環境に合うアーカイブをダウンロードする。アーカイブは x86_64-linux、aarch64-linux、aarch64-darwin の 3 種類がある。中の `ritsuryo` は C ライブラリがあれば動く。
 
 ```console
 $ curl -sSfL https://github.com/conao3/lean-ritsuryo/releases/download/v0.5.0/ritsuryo-x86_64-linux.tar.gz | tar -xz
@@ -33,19 +33,19 @@ $ ./ritsuryo --version
 ritsuryo 0.5.0
 ```
 
-Nix では `nix run github:conao3/lean-ritsuryo -- help` で動く。
+Nix を使う場合は `nix run github:conao3/lean-ritsuryo -- help` で実行できる。
 
 ## 使用例
 
 どのコマンドも `Result`、`Steps`、`Basis`、`Assumptions`、`Data`、`SchemaVersion` を持つ JSON を出す（[出力](#出力)を参照）。
 
-以下の例では `--query` で必要な部分だけを出している。出力は CLI の出力をそのまま写したもの。
+以下の例では `--query` で出力の一部だけを取り出している。出力は CLI が出したものをそのまま写している。
 
 ### 所得税
 
-2026 年分、課税総所得金額 7,000,000 円の所得税は 974,000 円。国税庁の速算表の結果（7,000,000 × 23% − 636,000）と一致する。
+2026 年分で課税総所得金額が 7,000,000 円のとき、所得税は 974,000 円になる。これは国税庁の速算表で求めた額（7,000,000 × 23% − 636,000）と同じである。
 
-復興特別所得税はその 2.1% で、一円未満を切り捨てる。`Payable` は合計の百円未満を切り捨てた額。
+復興特別所得税は所得税の 2.1% で、一円未満を切り捨てる。`Payable` は所得税と復興特別所得税の合計から百円未満を切り捨てた額である。
 
 ```console
 $ ritsuryo income-tax compute-tax --tax-year 2026 --taxable-income 7000000
@@ -129,7 +129,7 @@ $ ritsuryo income-tax compute-tax --tax-year 2027 --taxable-income 7000000 --que
 }
 ```
 
-計算が扱わない年を渡すと、終了コード 254 で止まる。
+計算が扱わない年を渡すと、終了コード 254 で終了する。
 
 ```console
 $ ritsuryo income-tax compute-tax --tax-year 2014 --taxable-income 7000000
@@ -140,9 +140,9 @@ $ echo $?
 
 ### 相続税
 
-課税価格の合計が 2 億円で、相続人が配偶者と子 2 人の場合。基礎控除は 3,000 万円 + 600 万円 × 3 人 = 4,800 万円。
+課税価格の合計が 2 億円で、相続人が配偶者と子 2 人の例である。基礎控除は 3,000 万円 + 600 万円 × 3 人 = 4,800 万円になる。
 
-残りの 1 億 5,200 万円を法定相続分で分け、各人の取得金額に第16条の税率を当てる。その合計が相続税の総額になる。
+課税価格の合計から基礎控除を引いた 1 億 5,200 万円を法定相続分で分け、各人の取得金額に第16条の税率をかける。これらの税額を足した額が相続税の総額になる。
 
 ```console
 $ ritsuryo inheritance-tax compute-total-tax --taxable-value-total 200000000 --spouse --biological-children 2 --query '{Result: Result, Steps: Steps}'
@@ -180,7 +180,7 @@ $ ritsuryo inheritance-tax compute-total-tax --taxable-value-total 200000000 --s
 }
 ```
 
-配偶者、全血の兄弟姉妹 2 人、半血の兄弟姉妹 1 人の法定相続分（民法 第900条第3号、第4号）。
+次は相続人が配偶者、全血の兄弟姉妹 2 人、半血の兄弟姉妹 1 人のときの法定相続分である（民法 第900条第3号、第4号）。
 
 ```console
 $ ritsuryo inheritance-tax compute-statutory-shares --spouse --full-siblings 2 --half-siblings 1 --query 'Result.Shares[].[Heir, Share]' --output text
@@ -192,7 +192,7 @@ half-sibling	1/20
 
 ### 消費税
 
-適格請求書の税率ごとの消費税額。`--items` は shorthand 構文で渡し、`--price-basis inclusive` で税込価額に切り替える。
+適格請求書に記載する消費税額を、税率ごとに求める。品目は `--items` に shorthand 構文で渡す。税込価額で渡すときは `--price-basis inclusive` を付ける。
 
 ```console
 $ ritsuryo consumption-tax compute-invoice-tax --items Price=1000,Rate=standard Price=540,Rate=reduced --rounding half-up --query Result
@@ -217,9 +217,9 @@ $ ritsuryo consumption-tax compute-invoice-tax --items Price=1000,Rate=standard 
 
 ### 延滞税、利子税、加算税
 
-税額 1,000,000 円、法定納期限 2026-03-16、納付 2026-07-31 の延滞税。納期限の翌日から 2 か月を経過すると割合が上がるので、そこで期間を分ける。
+税額 1,000,000 円、法定納期限 2026-03-16、納付日 2026-07-31 のときの延滞税である。延滞税の割合は納期限の翌日から 2 か月を過ぎると上がるので、CLI はその日で期間を分けて計算する。
 
-区間ごとに一円未満を切り捨て、合計の百円未満を切り捨てる。
+区間ごとの額は一円未満を切り捨て、その合計から百円未満を切り捨てる。
 
 ```console
 $ ritsuryo delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16 --payment-date 2026-07-31 --query Result
@@ -237,7 +237,7 @@ $ ritsuryo delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16
 +----------------------------------------------------------------------+
 ```
 
-2026-03-16 から 2026-06-15 まで延長した期間の利子税。
+次は納期限を 2026-03-16 から 2026-06-15 まで延長したときの利子税である。
 
 ```console
 $ ritsuryo interest-tax compute-tax --tax 1000000 --from-date 2026-03-16 --to-date 2026-06-15 --query Result
@@ -246,9 +246,9 @@ $ ritsuryo interest-tax compute-tax --tax 1000000 --from-date 2026-03-16 --to-da
 }
 ```
 
-税額 4,000,000 円の無申告加算税。`--timing` は既定の `after-prediction`（決定を予知した後の申告、または決定）。
+税額 4,000,000 円のときの無申告加算税である。`--timing` は既定値の `after-prediction`（決定を予知した後の申告、または決定）のままにしている。
 
-割合は 50 万円までが 15%、300 万円までが 20%、それを超える部分が 30%（国税通則法 第66条第1項、第3項）。
+割合は税額のうち 50 万円までの部分が 15%、300 万円までの部分が 20%、300 万円を超える部分が 30% である（国税通則法 第66条第1項、第3項）。
 
 ```console
 $ ritsuryo penalty-tax compute-tax --kind no-return --tax 4000000 --query Result
@@ -259,7 +259,7 @@ $ ritsuryo penalty-tax compute-tax --kind no-return --tax 4000000 --query Result
 
 ### 期間と期限
 
-2026-12-15 に判決の送達を受けたときの控訴期間。2 週間の末日 2026-12-29 は年末年始に当たるので、民事訴訟法 第95条第3項で 2027-01-04 に繰り下がる。
+2026-12-15 に判決の送達を受けたときの控訴期間である。2 週間の末日は 2026-12-29 だが、この日は年末年始に当たる。そのため、民事訴訟法 第95条第3項により、末日は 2027-01-04 に繰り下がる。
 
 ```console
 $ ritsuryo deadline compute-appeal-deadline --served-date 2026-12-15 --query '{Result: Result, RolledOver: Steps.RolledOverDays[].Date}'
@@ -280,7 +280,7 @@ $ ritsuryo deadline compute-appeal-deadline --served-date 2026-12-15 --query '{R
 }
 ```
 
-2026-01-31 から 1 か月の期間は 2026-02-28 に満了する。応当日の 2026-02-31 がないので、その月の末日に満了する（民法 第143条第2項ただし書）。
+2026-01-31 から 1 か月の期間は 2026-02-28 に満了する。応当日にあたる 2026-02-31 は存在しないので、その月の末日に満了する（民法 第143条第2項ただし書）。
 
 ```console
 $ ritsuryo period compute-expiry --event-date 2026-01-31 --months 1 --query Result
@@ -289,7 +289,7 @@ $ ritsuryo period compute-expiry --event-date 2026-01-31 --months 1 --query Resu
 }
 ```
 
-2026 年分の所得税の確定申告期限（所得税法 第120条第1項）。
+2026 年分の所得税の確定申告期限は、次のとおりである（所得税法 第120条第1項）。
 
 ```console
 $ ritsuryo deadline get-income-tax-return-deadline --tax-year 2026 --query Result
@@ -298,7 +298,7 @@ $ ritsuryo deadline get-income-tax-return-deadline --tax-year 2026 --query Resul
 }
 ```
 
-2 月 29 日生まれの人は、2 月 28 日に 18 歳に達する（年齢計算ニ関スル法律、民法 第143条）。
+2 月 29 日に生まれた人は、2 月 28 日に 18 歳に達する（年齢計算ニ関スル法律、民法 第143条）。
 
 ```console
 $ ritsuryo age get-attainment-date --birth-date 2008-02-29 --age 18 --query Result
@@ -308,6 +308,8 @@ $ ritsuryo age get-attainment-date --birth-date 2008-02-29 --age 18 --query Resu
 ```
 
 ### 祝日
+
+2027 年の休日を、種別と根拠の条文とともに一覧にする。
 
 ```console
 $ ritsuryo holiday list-holidays --year 2027 --output text --query Result.Holidays
@@ -332,7 +334,7 @@ $ ritsuryo holiday list-holidays --year 2027 --output text --query Result.Holida
 
 ### ファイルからの入力
 
-`--generate-cli-skeleton input` はすべてのパラメータを並べた雛形を出す。`--cli-input-json` はパラメータを JSON で受け取り、書かなかったキーは既定値になる。
+`--generate-cli-skeleton input` を付けると、すべてのパラメータを並べた JSON の雛形を出力する。`--cli-input-json` を使うとパラメータを JSON で渡せる。JSON に書かなかったパラメータは既定値になる。
 
 ```console
 $ cat input.json
@@ -355,11 +357,11 @@ $ nix build                  # CLI を ./result/bin/ritsuryo にビルドする
 $ nix run . -- help
 ```
 
-クリーンな状態からの `lake build` は、すべての証明の検査を約 26 秒で終える。
+ビルドの成果物を消してから `lake build` を実行すると、すべての証明の検査が約 26 秒で終わる。
 
 ## CLI
 
-入力は AWS CLI と同じ文法をとる。
+CLI の引数は AWS CLI と同じ文法で書く。
 
 ```console
 $ ritsuryo [global options] <command> <subcommand> [--parameter value ...]
@@ -369,11 +371,11 @@ $ ritsuryo [global options] <command> <subcommand> [--parameter value ...]
 - 値が `file://` で始まるときは、そのファイルを読む。
 - 構造体のリストは shorthand 構文（`--items Price=1000,Rate=standard Price=540,Rate=reduced`）か JSON で渡す。
 - `--cli-input-json` は、パラメータ名を PascalCase にしたキーの JSON オブジェクト 1 つで、すべてのパラメータを受け取る。
-- `--generate-cli-skeleton input|output` は入力または出力の雛形を出す。
-- `--query` は JMESPath の式で出力を絞る。
+- `--generate-cli-skeleton input|output` は入力または出力の雛形を出力する。
+- `--query` は JMESPath の式で出力の一部を取り出す。
 - `help` はどの階層でも使える（`ritsuryo help`、`ritsuryo period help`、`ritsuryo period compute-expiry help`）。
 
-`--query` が扱うのは、識別子、サブ式、添字、スライス、リストとオブジェクトの射影、flatten、フィルタ、multi-select のリストとハッシュ、パイプ、比較、`||` `&&` `!`、リテラル。関数は `length` `keys` `values` `sort` `reverse` `max` `min` `sum` `join` `contains` `starts_with` `ends_with` `type` `to_string` `not_null`。
+`--query` で使える JMESPath の構文は識別子、サブ式、添字、スライス、リストとオブジェクトの射影、flatten、フィルタ、multi-select のリストとハッシュ、パイプ、比較、`||` `&&` `!`、リテラルである。使える関数は `length` `keys` `values` `sort` `reverse` `max` `min` `sum` `join` `contains` `starts_with` `ends_with` `type` `to_string` `not_null` である。
 
 | command | subcommand | 計算するもの |
 |---|---|---|
@@ -397,16 +399,16 @@ $ ritsuryo [global options] <command> <subcommand> [--parameter value ...]
 
 ### 出力
 
-出力は PascalCase のキーを持つ JSON オブジェクト。
+CLI はキーが PascalCase の JSON オブジェクトを出力する。
 
-- `Result`：答え。
+- `Result`：計算の結果。
 - `Steps`：途中の値。起算日、応当日、繰り下げ前の末日、繰り下げた日、税率の区分ごとの税額など。
 - `Basis`：結果の根拠の法令名、条項、e-Gov の法令 ID。
 - `Assumptions`：結果が依拠する解釈と入力の前提。
 - `Data`：祝日を使ったときの祝日 CSV の取得元、Last-Modified、SHA-256、収録年の範囲。使わなかったときは `{}`。
 - `SchemaVersion`。
 
-`--output` で形式を選ぶ。`json`（既定）、`text`、`table` の 3 つ。`text` は AWS CLI と同じタブ区切りで、`SchemaVersion` などの最上位のスカラーは末尾に `KEY<TAB>value` の行で出る。
+出力の形式は `--output` で `json`（既定）、`text`、`table` から選ぶ。`text` は AWS CLI と同じタブ区切りの形式で、`SchemaVersion` などの最上位のスカラーは末尾に `KEY<TAB>value` の行で出力する。
 
 ### 終了コード
 
@@ -419,7 +421,7 @@ $ ritsuryo [global options] <command> <subcommand> [--parameter value ...]
 
 ## 証明した性質
 
-定理はすべて `lake build` で検査する。`sorry`、`admit`、`native_decide` はどの定理も使っていない。
+定理はすべて `lake build` のときに Lean が検査する。どの定理の証明も `sorry`、`admit`、`native_decide` を使っていない。
 
 `lake exe basis-report --check` は、公開の定理が `propext`、`Classical.choice`、`Quot.sound` 以外の公理に依存するとき、または下の設計 ID に定理がないときに失敗する。
 
@@ -463,17 +465,17 @@ $ ritsuryo [global options] <command> <subcommand> [--parameter value ...]
 
 ## 祝日データ
 
-`data/syukujitsu.csv` は内閣府の CSV（https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv、Shift_JIS、Last-Modified 2026-02-02T00:30:17Z）。1955-01-01 から 2027-11-23 までの 1,067 行で、うち 116 行が「休日」、2 行が「休日（祝日扱い）」、4 行が特例法の日（結婚の儀 ×2、大喪の礼、即位礼正殿の儀）。
+`data/syukujitsu.csv` は内閣府が公開している CSV（https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv、Shift_JIS、Last-Modified 2026-02-02T00:30:17Z）である。1955-01-01 から 2027-11-23 までの 1,067 行があり、そのうち 116 行が「休日」、2 行が「休日（祝日扱い）」、4 行が特例法で休日とした日（結婚の儀 ×2、大喪の礼、即位礼正殿の儀）である。
 
-`scripts/gen_holidays.py` がこれを年ごとの表にして `Ritsuryo/Holiday/Data/Generated.lean` に書く。ビルドはネットワークなしで済む。
+`scripts/gen_holidays.py` がこの CSV を年ごとの表にして `Ritsuryo/Holiday/Data/Generated.lean` に書き出す。そのため、ビルドのときにネットワークに接続する必要はない。
 
 `Holiday data` ワークフローは毎月 CSV を取り直して `make check` を通し、変わっていればプルリクエストを作る。
 
-## 性能
+## 実行時間とバイナリの大きさ
 
-リリースのバイナリは 3.4 MB のファイル 1 つ（x86_64-linux）。リンクするのは C ライブラリだけで、Lean のランタイム、GMP、libuv はバイナリに含まれる。
+リリースの `ritsuryo` は 3.4 MB の実行ファイル 1 つである（x86_64-linux）。Lean のランタイム、GMP、libuv はこのファイルに含まれていて、ほかに必要なのは C ライブラリだけである。
 
-1 回の実行は約 6 ms で終わり、メモリは最大で約 10 MiB。スクリプトから 1 行ごとに呼んでも負担にならない。
+1 回の実行は約 6 ms で終わり、使うメモリは最大で約 10 MiB である。たとえば `income-tax compute-tax` を 1 万回続けて呼んでも約 64 秒で終わる。
 
 | コマンド | 時間 |
 |---|---|
@@ -485,12 +487,11 @@ $ ritsuryo [global options] <command> <subcommand> [--parameter value ...]
 
 v0.5.0 の x86_64-linux のリリースを NixOS（14 ハードウェアスレッド）で `hyperfine -N --warmup 20 --runs 300` にかけて計測した。最大メモリは `time -f %M` で 8.4〜10.5 MiB。
 
-ビルドの設計を決めた計測値（import の仕方によるバイナリの大きさ、ツールチェイン、祝日の検査、ビルド時間）は `docs/measurements.md` にある。
+ビルドの方法を決めるときに使った計測値（import の書き方によるバイナリの大きさ、ツールチェインの違い、祝日の検査にかかる時間、ビルド時間）は `docs/measurements.md` にまとめている。
 
-## 配布
+## リリースの作り方
 
-- GitHub のリリース（[インストール](#インストール)を参照）。`Release` ワークフローが GitHub のランナーで上流のツールチェインを使って CLI をビルドし、ライブラリと CLI のテストを通す。`v*` のタグを push すると、アーカイブをリリースに添付する。
-- Nix flake：`nix run github:conao3/lean-ritsuryo`。
+GitHub のリリースは `Release` ワークフローが作る。ワークフローは GitHub のランナー（x86_64-linux、aarch64-linux、aarch64-darwin）で上流のツールチェインを使って CLI をビルドし、ライブラリと CLI のテストを実行する。`v*` のタグを push すると、ビルドしたアーカイブをリリースに添付する。
 
 ## 構成
 
