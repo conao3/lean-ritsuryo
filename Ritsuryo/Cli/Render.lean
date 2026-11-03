@@ -38,8 +38,17 @@ partial def textLines (prefix? : Option String) (j : Json) : List String :=
     else xs.toList.flatMap (textLines prefix?)
   | v => [withPrefix [v.scalarText]]
 
+/-- `--output text`。AWS CLI と同じくタブ区切りで、入れ子のオブジェクトは大文字のキーを行頭に置く。
+最上位のオブジェクトのスカラー（`SchemaVersion` など）は、意味が分かるように `キー<TAB>値` の行にして最後に出す。 -/
 def renderText (j : Json) : String :=
-  "\n".intercalate (textLines none j) ++ "\n"
+  let lines := match j with
+    | .obj fields =>
+      let nested := fields.toList.filter (!·.2.isScalar)
+      let scalars := fields.toList.filter (·.2.isScalar)
+      nested.flatMap (fun (k, v) => textLines (some k.toUpper) v) ++
+        scalars.map fun (k, v) => k.toUpper ++ "\t" ++ v.scalarText
+    | v => textLines none v
+  "\n".intercalate lines ++ "\n"
 
 def frame (title : String) (body : List String) (width : Nat) : List String :=
   let inner := width - 2

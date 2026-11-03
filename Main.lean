@@ -2,6 +2,7 @@ module
 
 import Ritsuryo.Cli.Commands
 import Ritsuryo.Cli.Render
+import Ritsuryo.Cli.Query
 
 open Ritsuryo.Cli
 
@@ -48,8 +49,18 @@ def run (argv : List String) : IO UInt32 := do
         IO.eprintln (Json.pretty (.obj args.values))
       match sub.run args with
       | .ok j =>
-        IO.print (render g.output (pascalCase sub.name) j)
-        return 0
+        match g.query with
+        | none =>
+          IO.print (render g.output (pascalCase sub.name) j)
+          return 0
+        | some q =>
+          match Query.apply q j with
+          | .ok j' =>
+            IO.print (render g.output (pascalCase sub.name) j')
+            return 0
+          | .error e =>
+            IO.eprintln s!"ritsuryo: error: {e}"
+            return 252
       | .error e =>
         IO.eprintln s!"ritsuryo: error: {e.message}"
         return e.code

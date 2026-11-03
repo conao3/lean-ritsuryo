@@ -85,8 +85,97 @@ CASES = [
     ),
     ("positional argument", "age compute-age 2000-01-01", 252, {}),
     (
-        "query is not supported",
-        "holiday list-holidays --year 2026 --query Result",
+        "income tax (NTA No.2260)",
+        "income-tax compute-tax --tax-year 2026 --taxable-income 7000000",
+        0,
+        {"Result.IncomeTax": 974000, "Result.ReconstructionTax": 20454},
+    ),
+    (
+        "income tax before 2015",
+        "income-tax compute-tax --tax-year 2014 --taxable-income 7000000",
+        254,
+        {},
+    ),
+    (
+        "inheritance tax (NTA No.4155)",
+        "inheritance-tax compute-total-tax --taxable-value-total 200000000 --spouse "
+        "--biological-children 2",
+        0,
+        {"Result.TotalTax": 27000000, "Steps.BasicDeduction": 48000000},
+    ),
+    (
+        "statutory shares",
+        "inheritance-tax compute-statutory-shares --spouse --ascendants 2",
+        0,
+        {"Result.Denominator": 6},
+    ),
+    (
+        "invoice tax",
+        "consumption-tax compute-invoice-tax --items Price=105,Rate=standard "
+        "Price=105,Rate=standard Price=105,Rate=standard",
+        0,
+        {"Result.TotalTax": 31},
+    ),
+    (
+        "invoice tax with a bad item",
+        "consumption-tax compute-invoice-tax --items Price=105,Rate=luxury",
+        252,
+        {},
+    ),
+    (
+        "delinquency tax",
+        "delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16 "
+        "--payment-date 2026-07-31",
+        0,
+        {"Result.DelinquencyTax": 23600, "Steps.TwoMonthsEnd": "2026-05-16"},
+    ),
+    (
+        "delinquency tax without the rate of the year",
+        "delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16 "
+        "--payment-date 2027-01-10",
+        254,
+        {},
+    ),
+    (
+        "delinquency tax with a given rate",
+        "delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16 "
+        "--payment-date 2027-01-10 --special-base-rates Year=2027,Rate=1.8",
+        0,
+        {"Result.DelinquencyTax": 64200},
+    ),
+    (
+        "interest tax",
+        "interest-tax compute-tax --tax 3000000 --from-date 2026-03-16 --to-date 2026-05-31",
+        0,
+        {"Result.InterestTax": 8100},
+    ),
+    (
+        "penalty tax",
+        "penalty-tax compute-tax --kind underpayment --tax 1200000 --timely-tax 1000000",
+        0,
+        {"Result.PenaltyTax": 130000},
+    ),
+    (
+        "fraud before notice",
+        "penalty-tax compute-tax --kind no-return --timing before-notice --tax 100000 --fraud",
+        252,
+        {},
+    ),
+    (
+        "appeal deadline",
+        "deadline compute-appeal-deadline --served-date 2026-12-15",
+        0,
+        {"Result.Deadline": "2027-01-04", "Result.Invariable": True},
+    ),
+    (
+        "income tax return deadline",
+        "deadline get-income-tax-return-deadline --tax-year 2025",
+        0,
+        {"Result.Deadline": "2026-03-16"},
+    ),
+    (
+        "malformed query",
+        "holiday list-holidays --year 2026 --query Result.[",
         252,
         {},
     ),
@@ -193,6 +282,35 @@ def main():
                 failures.append(f"{name}: exit {p.returncode}: {p.stderr.strip()}")
             elif json.loads(p.stdout)["Result"]["AttainmentDate"] != value:
                 failures.append(f"{name}: unexpected {p.stdout}")
+    queries = [
+        (
+            "query a field",
+            "holiday list-holidays --year 2026 --query Result.Holidays[0].Name",
+            "元日",
+        ),
+        (
+            "query a filter",
+            "holiday list-holidays --year 2026 "
+            "--query Result.Holidays[?Class=='substitute-holiday'].Date",
+            ["2026-05-06"],
+        ),
+        (
+            "query a function",
+            "holiday list-holidays --year 2026 --query length(Result.Holidays)",
+            18,
+        ),
+    ]
+    for name, cmd, value in queries:
+        p = run(cmd.split())
+        if p.returncode != 0:
+            failures.append(f"{name}: exit {p.returncode}: {p.stderr.strip()}")
+        elif json.loads(p.stdout) != value:
+            failures.append(f"{name}: unexpected {p.stdout}")
+    text = run(
+        "age get-attainment-date --birth-date 2008-02-29 --age 18 --output text".split()
+    )
+    if text.stdout.splitlines()[0] != "RESULT\t2026-02-28":
+        failures.append(f"text output starts with {text.stdout.splitlines()[0]!r}")
     skeleton = json.loads(
         run("period compute-expiry --generate-cli-skeleton input".split()).stdout
     )

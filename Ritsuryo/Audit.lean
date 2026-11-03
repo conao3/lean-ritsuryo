@@ -9,13 +9,15 @@ open Lean Elab Term Meta
 def requiredProofIds : List String :=
   ["CAL-1", "CAL-2", "CAL-3", "CAL-4", "CAL-5", "CAL-6",
    "PER-1", "PER-2", "PER-3", "PER-4", "PER-5", "PER-6", "PER-7",
-   "AGE-1", "AGE-2", "ROL-1", "ROL-2", "ROL-3", "HOL-1", "HOL-2", "HOL-C1"]
+   "AGE-1", "AGE-2", "ROL-1", "ROL-2", "ROL-3", "HOL-1", "HOL-2", "HOL-C1", "HOL-C2",
+   "TAX-1", "TAX-2", "TAX-3", "TAX-4", "TAX-5", "RND-1", "RND-2", "CON-1", "CON-2",
+   "DEL-1", "DEL-2", "PEN-1", "INH-1"]
 
 def allowedAxioms : List Name :=
   [``propext, ``Classical.choice, ``Quot.sound]
 
 def basisModulePrefixes : List Name :=
-  [`Ritsuryo.Calendar, `Ritsuryo.Period, `Ritsuryo.Holiday]
+  [`Ritsuryo.Calendar, `Ritsuryo.Period, `Ritsuryo.Holiday, `Ritsuryo.Tax]
 
 def generatedSuffixes : List String :=
   ["toCtorIdx", "ctorIdx", "noConfusionType", "noConfusion", "ofNat", "ctorElim", "ctorElimType"]
@@ -58,7 +60,7 @@ def code (n : Name) : String :=
   "`" ++ n.toString ++ "`"
 
 def idKey (id : String) : List Nat :=
-  let prefixes := ["CAL", "PER", "AGE", "ROL", "HOL"]
+  let prefixes := ["CAL", "PER", "AGE", "ROL", "HOL", "TAX", "RND", "CON", "DEL", "PEN", "INH"]
   prefixes.idxOf (id.takeWhile (· != '-')).toString :: articleKey id
 
 def renderReport : MetaM String := do
