@@ -485,7 +485,7 @@ CLI はキーが PascalCase の JSON オブジェクトを出力する。
 | `delinquency-tax compute-tax`（290 日） | 5.9 ms ± 1.3 ms |
 | `holiday list-holidays --output table` | 6.3 ms ± 1.2 ms |
 
-v0.5.0 の x86_64-linux のリリースを NixOS（14 ハードウェアスレッド）で `hyperfine -N --warmup 20 --runs 300` にかけて計測した。最大メモリは `time -f %M` で 8.4〜10.5 MiB。
+v0.5.0 の x86_64-linux のリリースを NixOS（14 ハードウェアスレッド）で `hyperfine -N --warmup 20 --runs 300` にかけて計測した。最大メモリは `time -f %M` で計測し、8.4〜10.5 MiB だった。
 
 ビルドの方法を決めるときに使った計測値（import の書き方によるバイナリの大きさ、ツールチェインの違い、祝日の検査にかかる時間、ビルド時間）は `docs/measurements.md` にまとめている。
 
