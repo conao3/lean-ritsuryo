@@ -18,7 +18,7 @@ jobs:
       - run: nix develop --command make fetch-holidays
       - run: nix develop --command make basis
       - run: nix develop --command make check
-      - uses: peter-evans/create-pull-request@v7.0.11
+      - uses: peter-evans/create-pull-request@v8.1.1
         with:
           branch: holiday-data
           commit-message: Update the Cabinet Office holiday CSV
