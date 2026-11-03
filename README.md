@@ -1,10 +1,322 @@
 # lean-ritsuryo
 
+[日本語](README-ja.md)
+
 Japanese statutory period and tax computations implemented in Lean 4, with proofs attached to the functions the CLI runs. Periods: 民法 第140条〜第143条, 年齢計算ニ関スル法律, 国税通則法 第10条, 民事訴訟法 第95条・第285条・第313条・第332条, 所得税法 第120条, and 国民の祝日に関する法律 第2条・第3条. Taxes: 所得税法 第89条 with 復興特別所得税 and 防衛特別所得税, 相続税法 第15条・第16条 with 民法 第900条, 消費税 (消費税法 第29条, 消費税法施行令 第70条の10), 延滞税・利子税 (国税通則法 第60条, 租税特別措置法 第93条・第94条), 加算税 (国税通則法 第65条〜第68条), and the rounding of 国税通則法 第118条・第119条. The Lake package and the CLI are `ritsuryo`.
 
 Each computation has two definitions: a spec that copies the structure of the provision, and an implementation the CLI runs. The theorems prove that they agree on every input, plus properties such as monotonicity, the least-holiday property of the rollover rules, and bounds on rounding. The source is commented in Japanese: each file says which provisions it implements, which definitions are the spec, and which theorem ties them to the implementation. `docs/basis.md` maps every provision to its spec, implementation, and theorems; `docs/interpretation.md` records how each provision is read.
 
-## Commands
+## Install
+
+Download the archive for your platform from the [releases](https://github.com/conao3/lean-ritsuryo/releases) (x86_64-linux, aarch64-linux, aarch64-darwin). It holds the `ritsuryo` binary, which needs only the C library.
+
+```console
+$ curl -sSfL https://github.com/conao3/lean-ritsuryo/releases/download/v0.5.0/ritsuryo-x86_64-linux.tar.gz | tar -xz
+$ ./ritsuryo --version
+ritsuryo 0.5.0
+```
+
+With Nix: `nix run github:conao3/lean-ritsuryo -- help`.
+
+## Examples
+
+Every command prints a JSON object with `Result`, `Steps`, `Basis`, `Assumptions`, `Data`, and `SchemaVersion` (see [CLI](#cli)). The examples below use `--query` to show the part that matters; the outputs are copied from the CLI.
+
+### 所得税
+
+課税総所得金額 7,000,000 円 for 2026 年分. 974,000 円 is the NTA quick-table result (7,000,000 × 23% − 636,000); 復興特別所得税 is 2.1% of it, rounded down to the yen, and the total is rounded down to 100 yen.
+
+```console
+$ ritsuryo income-tax compute-tax --tax-year 2026 --taxable-income 7000000
+{
+    "Result": {
+        "IncomeTax": 974000,
+        "ReconstructionTax": 20454,
+        "DefenseTax": 0,
+        "Total": 994454,
+        "Payable": 994400
+    },
+    "Steps": {
+        "TaxYear": 2026,
+        "TaxableIncome": {
+            "Input": 7000000,
+            "Base": 7000000,
+            "Tax": 974000
+        },
+        "TaxableRetirementIncome": {
+            "Input": 0,
+            "Base": 0,
+            "Tax": 0
+        },
+        "TaxableTimberIncome": {
+            "Input": 0,
+            "Base": 0,
+            "Tax": 0
+        },
+        "ReconstructionRate": "2.1%",
+        "DefenseRate": "0.0%"
+    },
+    "Basis": [
+        {
+            "Law": "所得税法",
+            "Article": "第89条第1項",
+            "LawId": "340AC0000000033"
+        },
+        {
+            "Law": "国税通則法",
+            "Article": "第118条第1項",
+            "LawId": "337AC0000000066"
+        },
+        {
+            "Law": "東日本大震災からの復興のための施策を実施するために必要な財源の確保に関する特別措置法",
+            "Article": "第9条第1項",
+            "LawId": "423AC0000000117"
+        },
+        {
+            "Law": "東日本大震災からの復興のための施策を実施するために必要な財源の確保に関する特別措置法",
+            "Article": "第13条",
+            "LawId": "423AC0000000117"
+        },
+        {
+            "Law": "国税通則法",
+            "Article": "第119条第1項",
+            "LawId": "337AC0000000066"
+        }
+    ],
+    "Assumptions": [
+        "入力は所得控除の後の課税総所得金額・課税退職所得金額・課税山林所得金額で、千円未満を切り捨てて税率表を当てる",
+        "課税山林所得金額は、五分の一の金額に税率表を当てて五を掛ける（5 分 5 乗）",
+        "基準所得税額は第89条の税額とし、税額控除（配当控除・外国税額控除など）はないものとする",
+        "復興特別所得税・防衛特別所得税は一円未満を切り捨てる",
+        "Payable は所得税と特別所得税の合計の百円未満を切り捨てた額で、源泉徴収税額・予定納税額を引く前の額"
+    ],
+    "Data": {},
+    "SchemaVersion": "1"
+}
+```
+
+From 2027 年分 the 復興特別所得税 is 1.1% and the 防衛特別所得税 is 1%:
+
+```console
+$ ritsuryo income-tax compute-tax --tax-year 2027 --taxable-income 7000000 --query Result
+{
+    "IncomeTax": 974000,
+    "ReconstructionTax": 10714,
+    "DefenseTax": 9740,
+    "Total": 994454,
+    "Payable": 994400
+}
+```
+
+A year the computation does not cover exits with 254:
+
+```console
+$ ritsuryo income-tax compute-tax --tax-year 2014 --taxable-income 7000000
+ritsuryo: error: 2014 年分は扱えない。所得税法第89条の現行の税率表は平成27年分（2015 年分）以後に適用される
+$ echo $?
+254
+```
+
+### 相続税
+
+課税価格の合計 2 億円, a spouse and two children. The 基礎控除 is 3,000 万円 + 600 万円 × 3; each heir's share of the remainder goes through the 16 条 table, and the sum is the 相続税の総額.
+
+```console
+$ ritsuryo inheritance-tax compute-total-tax --taxable-value-total 200000000 --spouse --biological-children 2 --query '{Result: Result, Steps: Steps}'
+{
+    "Result": {
+        "TotalTax": 27000000
+    },
+    "Steps": {
+        "TaxableValueTotal": 200000000,
+        "HeirCount": 3,
+        "BasicDeduction": 48000000,
+        "TaxableEstate": 152000000,
+        "Heirs": [
+            {
+                "Heir": "spouse",
+                "Share": "1/2",
+                "Acquired": 76000000,
+                "Tax": 15800000
+            },
+            {
+                "Heir": "child",
+                "Share": "1/4",
+                "Acquired": 38000000,
+                "Tax": 5600000
+            },
+            {
+                "Heir": "child",
+                "Share": "1/4",
+                "Acquired": 38000000,
+                "Tax": 5600000
+            }
+        ],
+        "TotalBeforeRounding": 27000000
+    }
+}
+```
+
+法定相続分 with a spouse, two full-blood siblings, and one half-blood sibling (民法 900 条 3 号・4 号):
+
+```console
+$ ritsuryo inheritance-tax compute-statutory-shares --spouse --full-siblings 2 --half-siblings 1 --query 'Result.Shares[].[Heir, Share]' --output text
+spouse	3/4
+full-sibling	1/10
+full-sibling	1/10
+half-sibling	1/20
+```
+
+### 消費税
+
+The tax on an 適格請求書, per rate. `--items` takes the shorthand syntax; `--price-basis inclusive` takes tax-inclusive prices.
+
+```console
+$ ritsuryo consumption-tax compute-invoice-tax --items Price=1000,Rate=standard Price=540,Rate=reduced --rounding half-up --query Result
+{
+    "Taxes": [
+        {
+            "Rate": "standard",
+            "RatePercent": 10,
+            "PriceTotal": 1000,
+            "Tax": 100
+        },
+        {
+            "Rate": "reduced",
+            "RatePercent": 8,
+            "PriceTotal": 540,
+            "Tax": 43
+        }
+    ],
+    "TotalTax": 143
+}
+```
+
+### 延滞税・利子税・加算税
+
+延滞税 on 1,000,000 円 with 法定納期限 2026-03-16, paid on 2026-07-31. The period splits at two months after the 納期限; each segment is floored to the yen, and the sum to 100 yen.
+
+```console
+$ ritsuryo delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16 --payment-date 2026-07-31 --query Result
+{
+    "DelinquencyTax": 23600
+}
+$ ritsuryo delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16 --payment-date 2026-07-31 --output table --query Steps.Segments
++----------------------------------------------------------------------+
+|                              ComputeTax                              |
++----------------------------------------------------------------------+
+|  From       | To         | Days | Rate | Band              | Amount  |
+|+--------------------------------------------------------------------+|
+|  2026-03-17 | 2026-05-16 | 61   | 2.8% | within-two-months | 4679    |
+|  2026-05-17 | 2026-07-31 | 76   | 9.1% | after-two-months  | 18947   |
++----------------------------------------------------------------------+
+```
+
+利子税 for an extension from 2026-03-16 to 2026-06-15:
+
+```console
+$ ritsuryo interest-tax compute-tax --tax 1000000 --from-date 2026-03-16 --to-date 2026-06-15 --query Result
+{
+    "InterestTax": 3200
+}
+```
+
+無申告加算税 on 4,000,000 円 with the default `--timing after-prediction` (a return filed after the 決定 was foreseen, or the 決定 itself): 15% up to 50 万円, 20% up to 300 万円, 30% above (国税通則法 66 条 1 項・3 項).
+
+```console
+$ ritsuryo penalty-tax compute-tax --kind no-return --tax 4000000 --query Result
+{
+    "PenaltyTax": 875000
+}
+```
+
+### 期間・期限
+
+控訴期間 for a judgment served on 2026-12-15. Two weeks end on 2026-12-29, which falls in the 年末年始; 民事訴訟法 95 条 3 項 moves the end to 2027-01-04.
+
+```console
+$ ritsuryo deadline compute-appeal-deadline --served-date 2026-12-15 --query '{Result: Result, RolledOver: Steps.RolledOverDays[].Date}'
+{
+    "Result": {
+        "Deadline": "2027-01-04",
+        "Period": "控訴期間",
+        "Invariable": true
+    },
+    "RolledOver": [
+        "2026-12-29",
+        "2026-12-30",
+        "2026-12-31",
+        "2027-01-01",
+        "2027-01-02",
+        "2027-01-03"
+    ]
+}
+```
+
+One month from 2026-01-31 ends on 2026-02-28: the corresponding day 2026-02-31 does not exist, so the period ends at the end of the month (民法 143 条 2 項 ただし書).
+
+```console
+$ ritsuryo period compute-expiry --event-date 2026-01-31 --months 1 --query Result
+{
+    "ExpiryDate": "2026-02-28"
+}
+```
+
+The 所得税 final return deadline for 2026 年分 (所得税法 120 条 1 項):
+
+```console
+$ ritsuryo deadline get-income-tax-return-deadline --tax-year 2026 --query Result
+{
+    "Deadline": "2027-03-15"
+}
+```
+
+A person born on 29 February attains 18 on 28 February (年齢計算ニ関スル法律, 民法 143 条):
+
+```console
+$ ritsuryo age get-attainment-date --birth-date 2008-02-29 --age 18 --query Result
+{
+    "AttainmentDate": "2026-02-28"
+}
+```
+
+### 祝日
+
+```console
+$ ritsuryo holiday list-holidays --year 2027 --output text --query Result.Holidays
+2027-01-01	元日	national-holiday	国民の祝日に関する法律 第2条
+2027-01-11	成人の日	national-holiday	国民の祝日に関する法律 第2条
+2027-02-11	建国記念の日	national-holiday	国民の祝日に関する法律 第2条
+2027-02-23	天皇誕生日	national-holiday	国民の祝日に関する法律 第2条
+2027-03-21	春分の日	national-holiday	国民の祝日に関する法律 第2条
+2027-03-22	休日	substitute-holiday	国民の祝日に関する法律 第3条第2項
+2027-04-29	昭和の日	national-holiday	国民の祝日に関する法律 第2条
+2027-05-03	憲法記念日	national-holiday	国民の祝日に関する法律 第2条
+2027-05-04	みどりの日	national-holiday	国民の祝日に関する法律 第2条
+2027-05-05	こどもの日	national-holiday	国民の祝日に関する法律 第2条
+2027-07-19	海の日	national-holiday	国民の祝日に関する法律 第2条
+2027-08-11	山の日	national-holiday	国民の祝日に関する法律 第2条
+2027-09-20	敬老の日	national-holiday	国民の祝日に関する法律 第2条
+2027-09-23	秋分の日	national-holiday	国民の祝日に関する法律 第2条
+2027-10-11	スポーツの日	national-holiday	国民の祝日に関する法律 第2条
+2027-11-03	文化の日	national-holiday	国民の祝日に関する法律 第2条
+2027-11-23	勤労感謝の日	national-holiday	国民の祝日に関する法律 第2条
+```
+
+### Input from a file
+
+`--generate-cli-skeleton input` prints a template with every parameter. `--cli-input-json` takes the parameters as JSON; keys left out take their defaults.
+
+```console
+$ cat input.json
+{"EventDate": "2026-12-15", "Weeks": 2, "RolloverRule": "civil-procedure-95"}
+$ ritsuryo period compute-expiry --cli-input-json file://input.json --query Result
+{
+    "ExpiryDate": "2027-01-04"
+}
+```
+
+## Development
 
 ```console
 $ nix develop                # Lean 4.35.0 (lake), make, python3, hyperfine
@@ -39,21 +351,6 @@ The CLI takes input in the AWS CLI grammar: `ritsuryo [global options] <command>
 | `delinquency-tax` | `compute-tax` | 延滞税 from the 法定納期限, 納期限, and payment day, split where the rate changes |
 | `interest-tax` | `compute-tax` | 利子税 over a period |
 | `penalty-tax` | `compute-tax` | 過少申告加算税, 無申告加算税, 不納付加算税, and 重加算税 by the timing of the return or payment |
-
-```console
-$ ritsuryo period compute-expiry --event-date 2026-12-15 --weeks 2 --rollover-rule civil-procedure-95
-$ ritsuryo age get-attainment-date --birth-date 2008-02-29 --age 18
-$ ritsuryo age compute-age --birth-date 2008-02-29 --as-of 2026-02-28 --output table
-$ ritsuryo holiday list-holidays --year 2027 --output text
-$ ritsuryo period compute-expiry --generate-cli-skeleton input > input.json
-$ ritsuryo period compute-expiry --cli-input-json file://input.json
-$ ritsuryo deadline compute-appeal-deadline --served-date 2026-12-15 --query Result.Deadline
-$ ritsuryo income-tax compute-tax --tax-year 2026 --taxable-income 7000000
-$ ritsuryo inheritance-tax compute-total-tax --taxable-value-total 200000000 --spouse --biological-children 2
-$ ritsuryo consumption-tax compute-invoice-tax --items Price=1000,Rate=standard Price=540,Rate=reduced --rounding half-up
-$ ritsuryo delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16 --payment-date 2026-07-31 --output table --query Steps.Segments
-$ ritsuryo penalty-tax compute-tax --kind no-return --tax 4000000
-```
 
 Output keys are PascalCase: `Result`, `Steps` (start date, corresponding day, last day before rollover, skipped days), `Basis` (statute, provision, e-Gov law ID), `Assumptions` (the readings and inputs the result depends on), `Data` (the holiday CSV's source, Last-Modified, SHA-256, and year range when holidays were used), and `SchemaVersion`. `Data` is `{}` when no data was used. `--output` is `json` (default), `text` (tab-separated, AWS style; top-level scalars such as `SchemaVersion` come last as `KEY<TAB>value` lines), or `table`.
 
@@ -131,7 +428,7 @@ Binary size depends on how the library loads its attribute. The attribute module
 
 The CLI therefore uses its own JSON module (`Ritsuryo/Cli/Json.lean`) rather than `Lean.Json`.
 
-Distribution: the Nix flake (`nix run github:conao3/lean-ritsuryo`). The `Release` workflow builds the CLI with the upstream toolchain on GitHub-hosted runners (x86_64-linux, aarch64-linux, aarch64-darwin), runs the library and CLI tests there, prints the linked libraries, and attaches the archives to a GitHub release when a `v*` tag is pushed.
+Distribution: the Nix flake (`nix run github:conao3/lean-ritsuryo`) and the GitHub releases. The `Release` workflow builds the CLI with the upstream toolchain on GitHub-hosted runners (x86_64-linux, aarch64-linux, aarch64-darwin), runs the library and CLI tests there, prints the linked libraries, and attaches the archives to a GitHub release when a `v*` tag is pushed.
 
 ## Layout
 
