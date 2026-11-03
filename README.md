@@ -15,13 +15,13 @@ It covers these provisions:
 - 加算税: 国税通則法 第65条〜第68条
 - Rounding: 国税通則法 第118条, 第119条
 
-Each computation is first written as a definition that follows the structure of the provision; below, that definition is called the spec. Lean definitions run, so if the spec can do the computation as it is, nothing else is written. Specs are handled in 3 ways.
+Each computation is first written as a definition that follows the structure of the provision; below, that definition is called the spec. Lean definitions run, so a spec can sometimes do the computation as it is. Whether the spec can be run decides how the code is written, in 3 ways.
 
-For the 所得税 and 相続税 rate tables, the spec that adds up the tax bracket by bracket and the NTA quick formula give the same tax on every amount. The theorem that they are equal carries `@[csimp]`, which makes the compiler rewrite calls to the spec into calls to the quick formula. The library functions call the spec in the source, and the quick formula is what runs.
+First, the spec runs as it is. Deciding which days 民事訴訟法 第95条第3項 treats as holidays is a function that lists the days the provision lists, and it is fast enough, so the rollover calls this spec directly.
 
-For periods, a separate implementation computes on day numbers (days from a fixed date), and the library functions call it. A theorem proves that it agrees with the spec, but only for dates that exist, so `@[csimp]` can't be used.
+Second, the spec is slow to run, and a separate, faster implementation is written. A theorem proves that the implementation agrees with the spec. If they agree on every input, the theorem carries `@[csimp]`. The 所得税 and 相続税 rate tables are this case: the spec that adds up the tax bracket by bracket and the NTA quick formula give the same tax on every amount. The compiler rewrites calls to the spec into calls to the quick formula, so the library functions call the spec in the source and the quick formula is what runs. If they agree only under a condition, `@[csimp]` can't be used, and the library functions call the implementation directly. Periods are this case: the implementation that computes on day numbers (days from a fixed date) agrees with the spec only for dates that exist.
 
-Rolling an expiry that falls on a holiday over to the first day that isn't one is not a procedure but a condition the result has to meet. For computations like this there is one function, and a theorem proves that its result meets the condition. Most theorems take this form, including monotonicity and the upper bound on the difference rounding makes.
+Third, the spec fixes a condition on the result rather than a procedure. Rolling an expiry that falls on a holiday over to the first day that isn't one is such a condition. For computations like this there is one function, and a theorem proves that its result meets the condition. Most theorems take this form, including monotonicity and the upper bound on the difference rounding makes.
 
 The comments in the source are in Japanese. The header of each file lists the provisions it implements, which definitions are specs and which are implementations, and what each theorem proves.
 
