@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-linux
+          - os: ubuntu-24.04-arm
+            target: aarch64-linux
+          - os: macos-latest
+            target: aarch64-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install elan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - run: lake build ritsuryo
+      - run: lake test
+      - run: python3 scripts/test_cli.py .lake/build/bin/ritsuryo
+      - name: Show linked libraries
+        run: |
+          if [ "$(uname)" = Darwin ]; then otool -L .lake/build/bin/ritsuryo
+          else ldd .lake/build/bin/ritsuryo; fi
+      - name: Package
+        run: |
+          mkdir -p dist
+          tar -czf "dist/ritsuryo-${{ matrix.target }}.tar.gz" -C .lake/build/bin ritsuryo \
+            -C "$GITHUB_WORKSPACE" LICENSE README.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ritsuryo-${{ matrix.target }}
+          path: dist/ritsuryo-${{ matrix.target }}.tar.gz
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.tar.gz --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes
