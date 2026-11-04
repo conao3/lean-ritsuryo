@@ -18,6 +18,7 @@
   <a href="#examples">Examples</a> ·
   <a href="docs/basis.md">Basis</a> ·
   <a href="docs/interpretation.md">Interpretation</a> ·
+  <a href="https://aixiv.online/abs/2611.00464">Paper</a> ·
   <a href="README-ja.md">日本語</a>
 </p>
 
@@ -32,7 +33,7 @@ It covers these provisions:
 - 所得税: 所得税法 第89条, with 復興特別所得税 and 防衛特別所得税
 - 相続税: 相続税法 第15条, 第16条, with the shares of 民法 第900条
 - 消費税: 消費税法 第29条, 消費税法施行令 第70条の10
-- 延滞税 and 利子税: 国税通則法 第60条, 租税特別措置法 第93条, 第94条
+- 延滞税 and 利子税: 国税通則法 第60条, 第64条, 租税特別措置法 第93条, 第94条
 - 加算税: 国税通則法 第65条〜第68条
 - Rounding: 国税通則法 第118条, 第119条
 
@@ -547,6 +548,20 @@ Tests/, TestMain.lean                lake test
 scripts/                             CSV generator, lint, CLI tests
 data/                                the Cabinet Office CSV
 docs/                                basis.md (generated), interpretation.md, measurements.md
+```
+
+## Paper
+
+The paper [Machine-Checked Japanese Statutory Period and Tax Computations in Lean 4](https://aixiv.online/abs/2611.00464) (aiXiv:2611.00464) describes release v0.5.0: the specs and implementations, the proved properties, and the readings of the provisions. To cite it:
+
+```bibtex
+@misc{yamashita2026ritsuryo,
+  author = {Naoya Yamashita},
+  title = {Machine-Checked Japanese Statutory Period and Tax Computations in Lean 4},
+  year = {2026},
+  howpublished = {aiXiv:2611.00464},
+  url = {https://aixiv.online/abs/2611.00464}
+}
 ```
 
 ## License

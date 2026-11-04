@@ -18,6 +18,7 @@
   <a href="#使用例">使用例</a> ·
   <a href="docs/basis.md">条文と定理の対応</a> ·
   <a href="docs/interpretation.md">条文の読み方</a> ·
+  <a href="https://aixiv.online/abs/2611.00464">論文</a> ·
   <a href="README.md">English</a>
 </p>
 
@@ -32,7 +33,7 @@ lean-ritsuryo は、日本の法令が定める期間と税額の計算を Lean 
 - 所得税：所得税法 第89条と、復興特別所得税、防衛特別所得税
 - 相続税：相続税法 第15条、第16条と、民法 第900条の法定相続分
 - 消費税：消費税法 第29条、消費税法施行令 第70条の10
-- 延滞税と利子税：国税通則法 第60条、租税特別措置法 第93条、第94条
+- 延滞税と利子税：国税通則法 第60条、第64条、租税特別措置法 第93条、第94条
 - 加算税：国税通則法 第65条〜第68条
 - 端数計算：国税通則法 第118条、第119条
 
@@ -547,6 +548,20 @@ Tests/, TestMain.lean                lake test
 scripts/                             CSV の変換、lint、CLI のテスト
 data/                                内閣府の CSV
 docs/                                basis.md（生成）、interpretation.md、measurements.md
+```
+
+## 論文
+
+論文 [Machine-Checked Japanese Statutory Period and Tax Computations in Lean 4](https://aixiv.online/abs/2611.00464)（aiXiv:2611.00464）は、リリース v0.5.0 の仕様と実装、証明した性質、条文の読み方を説明している。引用するときは次を使う。
+
+```bibtex
+@misc{yamashita2026ritsuryo,
+  author = {Naoya Yamashita},
+  title = {Machine-Checked Japanese Statutory Period and Tax Computations in Lean 4},
+  year = {2026},
+  howpublished = {aiXiv:2611.00464},
+  url = {https://aixiv.online/abs/2611.00464}
+}
 ```
 
 ## ライセンス
