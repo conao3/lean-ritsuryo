@@ -3,7 +3,7 @@ module
 /-!
 # CLI の JSON
 
-CLI の入力（`--cli-input-json`、`file://` の値）と出力に使う JSON の型と、その整形・構文解析。
+CLI の入力（`file://` の値）と出力に使う JSON の型と、その整形・構文解析。
 Lean の `Lean.Data.Json` を import すると、CLI のバイナリが `Lean` 全体を取り込んで 134 MiB になり、起動も遅くなる
 （README の計測）。そのため、CLI に要る分だけをこのファイルに書き、ライブラリと CLI は `Lean` に依存しない。
 

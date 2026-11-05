@@ -65,7 +65,7 @@ With Nix, `nix run github:conao3/lean-ritsuryo -- help` runs it.
 
 Every command prints a JSON object with `Result`, `Steps`, `Basis`, `Assumptions`, `Data`, and `SchemaVersion` (see [Output](#output)).
 
-The examples below use `--query` to pick out only part of the output. The outputs are copied as the CLI printed them.
+The examples below pipe the output to `jq` to pick out only part of it. The outputs are copied as the commands printed them.
 
 ### 所得税
 
@@ -145,13 +145,13 @@ $ ritsuryo income-tax compute-tax --tax-year 2026 --taxable-income 7000000
 From 2027 年分, the 復興特別所得税 is 1.1% and the 防衛特別所得税 is 1%.
 
 ```console
-$ ritsuryo income-tax compute-tax --tax-year 2027 --taxable-income 7000000 --query Result
+$ ritsuryo income-tax compute-tax --tax-year 2027 --taxable-income 7000000 | jq .Result
 {
-    "IncomeTax": 974000,
-    "ReconstructionTax": 10714,
-    "DefenseTax": 9740,
-    "Total": 994454,
-    "Payable": 994400
+  "IncomeTax": 974000,
+  "ReconstructionTax": 10714,
+  "DefenseTax": 9740,
+  "Total": 994454,
+  "Payable": 994400
 }
 ```
 
@@ -171,45 +171,45 @@ An example where 課税価格の合計 is 2 億円 and the heirs are a spouse an
 課税価格の合計 minus the 基礎控除, 1 億 5,200 万円, is split by the 法定相続分, and the 16 条 rates are applied to each heir's amount. Adding up those taxes gives the 相続税の総額.
 
 ```console
-$ ritsuryo inheritance-tax compute-total-tax --taxable-value-total 200000000 --spouse --biological-children 2 --query '{Result: Result, Steps: Steps}'
+$ ritsuryo inheritance-tax compute-total-tax --taxable-value-total 200000000 --spouse --biological-children 2 | jq '{Result, Steps}'
 {
-    "Result": {
-        "TotalTax": 27000000
-    },
-    "Steps": {
-        "TaxableValueTotal": 200000000,
-        "HeirCount": 3,
-        "BasicDeduction": 48000000,
-        "TaxableEstate": 152000000,
-        "Heirs": [
-            {
-                "Heir": "spouse",
-                "Share": "1/2",
-                "Acquired": 76000000,
-                "Tax": 15800000
-            },
-            {
-                "Heir": "child",
-                "Share": "1/4",
-                "Acquired": 38000000,
-                "Tax": 5600000
-            },
-            {
-                "Heir": "child",
-                "Share": "1/4",
-                "Acquired": 38000000,
-                "Tax": 5600000
-            }
-        ],
-        "TotalBeforeRounding": 27000000
-    }
+  "Result": {
+    "TotalTax": 27000000
+  },
+  "Steps": {
+    "TaxableValueTotal": 200000000,
+    "HeirCount": 3,
+    "BasicDeduction": 48000000,
+    "TaxableEstate": 152000000,
+    "Heirs": [
+      {
+        "Heir": "spouse",
+        "Share": "1/2",
+        "Acquired": 76000000,
+        "Tax": 15800000
+      },
+      {
+        "Heir": "child",
+        "Share": "1/4",
+        "Acquired": 38000000,
+        "Tax": 5600000
+      },
+      {
+        "Heir": "child",
+        "Share": "1/4",
+        "Acquired": 38000000,
+        "Tax": 5600000
+      }
+    ],
+    "TotalBeforeRounding": 27000000
+  }
 }
 ```
 
 Next, the 法定相続分 when the heirs are a spouse, two full-blood siblings, and one half-blood sibling (民法 第900条第3号, 第4号).
 
 ```console
-$ ritsuryo inheritance-tax compute-statutory-shares --spouse --full-siblings 2 --half-siblings 1 --query 'Result.Shares[].[Heir, Share]' --output text
+$ ritsuryo inheritance-tax compute-statutory-shares --spouse --full-siblings 2 --half-siblings 1 | jq -r '.Result.Shares[] | [.Heir, .Share] | @tsv'
 spouse	3/4
 full-sibling	1/10
 full-sibling	1/10
@@ -221,23 +221,23 @@ half-sibling	1/20
 This computes the tax to print on an 適格請求書, per rate. Pass the items to `--items` in the shorthand syntax. Add `--price-basis inclusive` when passing tax-inclusive prices.
 
 ```console
-$ ritsuryo consumption-tax compute-invoice-tax --items Price=1000,Rate=standard Price=540,Rate=reduced --rounding half-up --query Result
+$ ritsuryo consumption-tax compute-invoice-tax --items Price=1000,Rate=standard Price=540,Rate=reduced --rounding half-up | jq .Result
 {
-    "Taxes": [
-        {
-            "Rate": "standard",
-            "RatePercent": 10,
-            "PriceTotal": 1000,
-            "Tax": 100
-        },
-        {
-            "Rate": "reduced",
-            "RatePercent": 8,
-            "PriceTotal": 540,
-            "Tax": 43
-        }
-    ],
-    "TotalTax": 143
+  "Taxes": [
+    {
+      "Rate": "standard",
+      "RatePercent": 10,
+      "PriceTotal": 1000,
+      "Tax": 100
+    },
+    {
+      "Rate": "reduced",
+      "RatePercent": 8,
+      "PriceTotal": 540,
+      "Tax": 43
+    }
+  ],
+  "TotalTax": 143
 }
 ```
 
@@ -248,27 +248,21 @@ The 延滞税 on a tax of 1,000,000 円 with 法定納期限 2026-03-16 and paym
 Each segment's amount is rounded down to the yen, and their sum is rounded down to 100 yen.
 
 ```console
-$ ritsuryo delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16 --payment-date 2026-07-31 --query Result
+$ ritsuryo delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16 --payment-date 2026-07-31 | jq .Result
 {
-    "DelinquencyTax": 23600
+  "DelinquencyTax": 23600
 }
-$ ritsuryo delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16 --payment-date 2026-07-31 --output table --query Steps.Segments
-+----------------------------------------------------------------------+
-|                              ComputeTax                              |
-+----------------------------------------------------------------------+
-|  From       | To         | Days | Rate | Band              | Amount  |
-|+--------------------------------------------------------------------+|
-|  2026-03-17 | 2026-05-16 | 61   | 2.8% | within-two-months | 4679    |
-|  2026-05-17 | 2026-07-31 | 76   | 9.1% | after-two-months  | 18947   |
-+----------------------------------------------------------------------+
+$ ritsuryo delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16 --payment-date 2026-07-31 | jq -c '.Steps.Segments[]'
+{"From":"2026-03-17","To":"2026-05-16","Days":61,"Rate":"2.8%","Band":"within-two-months","Amount":4679}
+{"From":"2026-05-17","To":"2026-07-31","Days":76,"Rate":"9.1%","Band":"after-two-months","Amount":18947}
 ```
 
 Next, the 利子税 when the 納期限 is extended from 2026-03-16 to 2026-06-15.
 
 ```console
-$ ritsuryo interest-tax compute-tax --tax 1000000 --from-date 2026-03-16 --to-date 2026-06-15 --query Result
+$ ritsuryo interest-tax compute-tax --tax 1000000 --from-date 2026-03-16 --to-date 2026-06-15 | jq .Result
 {
-    "InterestTax": 3200
+  "InterestTax": 3200
 }
 ```
 
@@ -277,9 +271,9 @@ The 無申告加算税 on a tax of 4,000,000 円. `--timing` is left at its defa
 The rate is 15% on the part of the tax up to 50 万円, 20% on the part up to 300 万円, and 30% on the part above 300 万円 (国税通則法 第66条第1項, 第3項).
 
 ```console
-$ ritsuryo penalty-tax compute-tax --kind no-return --tax 4000000 --query Result
+$ ritsuryo penalty-tax compute-tax --kind no-return --tax 4000000 | jq .Result
 {
-    "PenaltyTax": 875000
+  "PenaltyTax": 875000
 }
 ```
 
@@ -288,48 +282,48 @@ $ ritsuryo penalty-tax compute-tax --kind no-return --tax 4000000 --query Result
 The 控訴期間 when a judgment is served on 2026-12-15. The last day of the 2 weeks is 2026-12-29, but that day falls in the 年末年始. 民事訴訟法 第95条第3項 therefore moves the last day to 2027-01-04.
 
 ```console
-$ ritsuryo deadline compute-appeal-deadline --served-date 2026-12-15 --query '{Result: Result, RolledOver: Steps.RolledOverDays[].Date}'
+$ ritsuryo deadline compute-appeal-deadline --served-date 2026-12-15 | jq '{Result, RolledOver: [.Steps.RolledOverDays[].Date]}'
 {
-    "Result": {
-        "Deadline": "2027-01-04",
-        "Period": "控訴期間",
-        "Invariable": true
-    },
-    "RolledOver": [
-        "2026-12-29",
-        "2026-12-30",
-        "2026-12-31",
-        "2027-01-01",
-        "2027-01-02",
-        "2027-01-03"
-    ]
+  "Result": {
+    "Deadline": "2027-01-04",
+    "Period": "控訴期間",
+    "Invariable": true
+  },
+  "RolledOver": [
+    "2026-12-29",
+    "2026-12-30",
+    "2026-12-31",
+    "2027-01-01",
+    "2027-01-02",
+    "2027-01-03"
+  ]
 }
 ```
 
 A period of 1 month from 2026-01-31 ends on 2026-02-28. The 応当日 would be 2026-02-31, which doesn't exist, so the period ends on the last day of that month (民法 第143条第2項ただし書).
 
 ```console
-$ ritsuryo period compute-expiry --event-date 2026-01-31 --months 1 --query Result
+$ ritsuryo period compute-expiry --event-date 2026-01-31 --months 1 | jq .Result
 {
-    "ExpiryDate": "2026-02-28"
+  "ExpiryDate": "2026-02-28"
 }
 ```
 
 The 所得税 確定申告期限 for 2026 年分 is as follows (所得税法 第120条第1項).
 
 ```console
-$ ritsuryo deadline get-income-tax-return-deadline --tax-year 2026 --query Result
+$ ritsuryo deadline get-income-tax-return-deadline --tax-year 2026 | jq .Result
 {
-    "Deadline": "2027-03-15"
+  "Deadline": "2027-03-15"
 }
 ```
 
 A person born on 29 February attains 18 on 28 February (年齢計算ニ関スル法律, 民法 第143条).
 
 ```console
-$ ritsuryo age get-attainment-date --birth-date 2008-02-29 --age 18 --query Result
+$ ritsuryo age get-attainment-date --birth-date 2008-02-29 --age 18 | jq .Result
 {
-    "AttainmentDate": "2026-02-28"
+  "AttainmentDate": "2026-02-28"
 }
 ```
 
@@ -338,7 +332,7 @@ $ ritsuryo age get-attainment-date --birth-date 2008-02-29 --age 18 --query Resu
 This lists the holidays of 2027 with their class and the provision behind each.
 
 ```console
-$ ritsuryo holiday list-holidays --year 2027 --output text --query Result.Holidays
+$ ritsuryo holiday list-holidays --year 2027 | jq -r '.Result.Holidays[] | [.Date, .Name, .Class, .Article] | @tsv'
 2027-01-01	元日	national-holiday	国民の祝日に関する法律 第2条
 2027-01-11	成人の日	national-holiday	国民の祝日に関する法律 第2条
 2027-02-11	建国記念の日	national-holiday	国民の祝日に関する法律 第2条
@@ -360,15 +354,13 @@ $ ritsuryo holiday list-holidays --year 2027 --output text --query Result.Holida
 
 ### Input from a file
 
-With `--generate-cli-skeleton input`, the CLI prints a JSON template listing every parameter. With `--cli-input-json`, you can pass the parameters as JSON. Parameters left out of the JSON take their defaults.
+A value starting with `file://` is read from that file. A structure list such as `--items` can be read from a JSON file.
 
 ```console
-$ cat input.json
-{"EventDate": "2026-12-15", "Weeks": 2, "RolloverRule": "civil-procedure-95"}
-$ ritsuryo period compute-expiry --cli-input-json file://input.json --query Result
-{
-    "ExpiryDate": "2027-01-04"
-}
+$ cat items.json
+[{"Price": 1000, "Rate": "standard"}, {"Price": 540, "Rate": "reduced"}]
+$ ritsuryo consumption-tax compute-invoice-tax --items file://items.json --rounding half-up | jq .Result.TotalTax
+143
 ```
 
 ## Development
@@ -396,12 +388,7 @@ $ ritsuryo [global options] <command> <subcommand> [--parameter value ...]
 - Parameters are `--kebab-case`. Booleans are `--flag` / `--no-flag`, and lists are space-separated.
 - A value starting with `file://` is read from that file.
 - Structure lists take the shorthand syntax (`--items Price=1000,Rate=standard Price=540,Rate=reduced`) or JSON.
-- `--cli-input-json` takes every parameter as one JSON object, keyed by the PascalCase parameter names.
-- `--generate-cli-skeleton input|output` prints the input or output template.
-- `--query` picks out part of the output with a JMESPath expression.
 - `help` works at every level: `ritsuryo help`, `ritsuryo period help`, `ritsuryo period compute-expiry help`.
-
-The JMESPath syntax `--query` accepts is identifiers, sub-expressions, indexes, slices, list and object projections, flatten, filters, multi-select lists and hashes, pipes, comparisons, `||` `&&` `!`, and literals. The functions it accepts are `length` `keys` `values` `sort` `reverse` `max` `min` `sum` `join` `contains` `starts_with` `ends_with` `type` `to_string` `not_null`.
 
 | command | subcommand | Computes |
 |---|---|---|
@@ -541,7 +528,7 @@ Ritsuryo/
     Consumption.lean                 消費税法 29 条, 施行令 70 条の 10
     Delinquency.lean, Penalty.lean   延滞税・利子税, 加算税
     Proofs/                          TAX, RND, CON, DEL, PEN, INH proofs
-  Cli/                               JSON, argument parsing, --query, rendering, command tables
+  Cli/                               JSON, argument parsing, rendering, command tables
 Main.lean                            the ritsuryo CLI
 BasisReport.lean                     lake exe basis-report
 Tests/, TestMain.lean                lake test

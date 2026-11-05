@@ -6,8 +6,7 @@ public import Ritsuryo.Cli.Tax
 /-!
 # コマンド表
 
-`ritsuryo` のコマンド・サブコマンド・パラメータの定義をまとめた表。解析、`help`、`--generate-cli-skeleton`、
-`--cli-input-json` の読み込みは、すべてこの表から導く。
+`ritsuryo` のコマンド・サブコマンド・パラメータの定義をまとめた表。解析と `help` は、すべてこの表から導く。
 
 表の各行は `Ritsuryo/Cli/Period.lean`（`period`・`age`・`holiday`・`deadline`）と
 `Ritsuryo/Cli/Tax.lean`（税のコマンド）に書き、ここで 1 つにつなぐ。

@@ -90,7 +90,7 @@ def envelope (result steps : Json) (basis : List (String × String)) (assumption
     ("Assumptions", .arr (assumptions.toArray.map .str)), ("Data", data),
     ("SchemaVersion", .str schemaVersion)]
 
-/-- `--generate-cli-skeleton output` の雛形。`Result` と `Steps` をサブコマンドごとに受け取り、残りは空の値にする。 -/
+/-- `help` の OUTPUT に出す出力の雛形。`Result` と `Steps` をサブコマンドごとに受け取り、残りは空の値にする。 -/
 def envelopeSkeleton (result steps : Json) : Json :=
   envelope result steps [("", "")] [""] (.obj #[("HolidayCsv", .obj #[("Source", .str ""),
     ("LastModified", .str ""), ("Sha256", .str ""), ("FirstYear", .num 0),

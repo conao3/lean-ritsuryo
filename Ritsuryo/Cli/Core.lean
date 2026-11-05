@@ -13,13 +13,10 @@ ritsuryo [グローバルオプション] <command> <subcommand> [--parameter va
 
 - パラメータ名は `--kebab-case`。真偽値は `--flag` / `--no-flag`、並びは空白区切りの値、構造体の並びは
   shorthand 構文 `Key=Value,Key2=Value2` で渡す。値が `file://` で始まるときはファイルの中身を読む。
-- `--cli-input-json` は全パラメータを 1 つの JSON オブジェクトで受け取る。キーはパラメータ名の PascalCase
-  （`--event-date` なら `EventDate`）。同じパラメータをコマンドラインでも渡したときは、コマンドラインの値を使う。
-- `--generate-cli-skeleton input|output` は入力（`--cli-input-json` の雛形）または出力の雛形を出す。
 - `help` はどの階層でも使える（`ritsuryo help`、`ritsuryo period help`、`ritsuryo period compute-expiry help`）。
 
 コマンドは `Command`・`Subcommand`・`Param` の表で定義する（表の本体は `Ritsuryo/Cli/Commands.lean`）。
-解析（`parse`）、`help` の文面（`topHelp`・`commandHelp`・`subcommandHelp`）、入力の雛形（`inputSkeleton`）、
+解析（`parse`）、`help` の文面（`topHelp`・`commandHelp`・`subcommandHelp`）、
 値の検査（`checkValue`）は、すべてこの表の `Param` から作るので、パラメータを足すときは表に 1 行書けば済む。
 
 解析は 2 段で行う。`scan` がグローバルオプション・位置引数・`--name value...` の組に分け、
@@ -47,7 +44,7 @@ def domainError (message : String) : CliError := ⟨254, message⟩
 /-- それ以外の失敗（終了コード 255）。 -/
 def otherError (message : String) : CliError := ⟨255, message⟩
 
-/-- パラメータの値の型。検査（`checkValue`）、`help` の型名、入力の雛形はこの型から決まる。 -/
+/-- パラメータの値の型。検査（`checkValue`）と `help` の型名はこの型から決まる。 -/
 inductive ParamType where
   /-- `YYYY-MM-DD` 形式の日付の文字列 -/
   | date
@@ -75,7 +72,7 @@ structure Param where
 def pascalCase (kebab : String) : String :=
   String.join ((kebab.splitOn "-").map fun w => w.capitalize)
 
-/-- パラメータの JSON のキー。`--cli-input-json` のキーと `Args` のキーに使う。 -/
+/-- パラメータの JSON のキー。`Args` のキーに使う。 -/
 def Param.key (p : Param) : String :=
   pascalCase p.name
 
@@ -135,26 +132,17 @@ inductive OutputFormat where
   | text
   | table
 
-/-- `--generate-cli-skeleton` で出す雛形の種類。 -/
-inductive Skeleton where
-  | input
-  | output
-
 /-- グローバルオプション。どのサブコマンドの前後に置いてもよい。 -/
 structure Globals where
   output : OutputFormat := .json
   debug : Bool := false
   version : Bool := false
-  cliInputJson : Option String := none
-  skeleton : Option Skeleton := none
-  query : Option String := none
 
-/-- 解析の結果、何をするか。バージョンの表示、`help`、雛形の出力、サブコマンドの実行のどれか。 -/
+/-- 解析の結果、何をするか。バージョンの表示、`help`、サブコマンドの実行のどれか。 -/
 inductive Invocation where
   | version
   /-- `path` はコマンド名とサブコマンド名の並び。空なら最上位の `help` -/
   | help (path : List String)
-  | skeleton (cmd : Command) (sub : Subcommand) (kind : Skeleton)
   | run (cmd : Command) (sub : Subcommand) (args : Args)
 
 /-- `help` に出す型の説明。 -/
@@ -179,7 +167,6 @@ def topHelp (commands : List Command) : String :=
   "NAME\n    ritsuryo\n\nDESCRIPTION\n    日本法の期間計算と税額計算を、Lean 4 で条文の仕様との一致を証明した関数で行う。\n\n" ++
     "SYNOPSIS\n    ritsuryo [options] <command> <subcommand> [parameters]\n\n" ++
     "GLOBAL OPTIONS\n    --output (string) json | text | table（既定は json）\n" ++
-    "    --query (string) 出力を JMESPath の式で絞り込む\n" ++
     "    --debug (boolean) 解析したパラメータを標準エラーに出す\n" ++
     "    --version (boolean) バージョンを出す\n\n" ++
     "AVAILABLE COMMANDS\n" ++ "\n".intercalate lines ++ "\n    help\n"
@@ -209,27 +196,8 @@ def subcommandHelp (c : Command) (s : Subcommand) : String :=
     s!"    --{p.name} ({typeName p.type}){if p.required then " 必須" else ""}\n        {p.help}"
   s!"NAME\n    {s.name}\n\nDESCRIPTION\n    {s.help}\n\n" ++
     s!"SYNOPSIS\n    ritsuryo {c.name} {s.name}\n" ++ "\n".intercalate syn ++
-    "\n      [--cli-input-json <value>]\n      [--generate-cli-skeleton <value>]\n\n" ++
-    "OPTIONS\n" ++ "\n\n".intercalate opts ++
-    "\n\n    --cli-input-json (string)\n        全パラメータを JSON で渡す。" ++
-    "キーはパラメータ名の PascalCase。値が file:// で始まるときはファイルを読む。\n\n" ++
-    "    --generate-cli-skeleton (string) input | output\n" ++
-    "        入力（--cli-input-json の雛形）または出力の雛形を出す。\n\n" ++
-    "OUTPUT\n" ++ (Json.pretty s.outputSkeleton) ++ "\n"
-
-/-- `--generate-cli-skeleton input` の雛形。全パラメータを PascalCase のキーにし、型ごとの空の値を入れる。 -/
-def inputSkeleton (s : Subcommand) : Json :=
-  .obj (s.params.toArray.map fun p =>
-    (p.key, match p.type with
-      | .date => .str ""
-      | .nat => .num 0
-      | .flag => .bool false
-      | .decimal => .str ""
-      | .enum _ => .str ""
-      | .enumList _ => .arr #[.str ""]
-      | .structList fields => .arr #[.obj (fields.toArray.map fun (k, t) => (k, match t with
-        | .nat => .num 0
-        | _ => .str ""))]))
+    "\n\nOPTIONS\n" ++ "\n\n".intercalate opts ++
+    "\n\nOUTPUT\n" ++ (Json.pretty s.outputSkeleton) ++ "\n"
 
 /-- 空でなく、数字だけからなる文字列か。 -/
 def isDigits (s : String) : Bool :=
@@ -394,21 +362,8 @@ partial def scan (args : List String) (acc : RawArgs) : Except CliError RawArgs 
     | some f => scan rest { acc with globals := { acc.globals with output := f } }
     | none => .error (usageError s!"--output には json | text | table を渡す（{v} は使えない）")
   | ["--output"] => .error (usageError "--output に値がない")
-  | "--query" :: v :: rest => scan rest { acc with globals := { acc.globals with query := some v } }
-  | ["--query"] => .error (usageError "--query に値がない")
   | "--debug" :: rest => scan rest { acc with globals := { acc.globals with debug := true } }
   | "--version" :: rest => scan rest { acc with globals := { acc.globals with version := true } }
-  | "--cli-input-json" :: v :: rest =>
-    scan rest { acc with globals := { acc.globals with cliInputJson := some v } }
-  | ["--cli-input-json"] => .error (usageError "--cli-input-json に値がない")
-  | "--generate-cli-skeleton" :: rest =>
-    -- 値を省いたときは input の雛形を出す。
-    match rest with
-    | "input" :: rest' =>
-      scan rest' { acc with globals := { acc.globals with skeleton := some .input } }
-    | "output" :: rest' =>
-      scan rest' { acc with globals := { acc.globals with skeleton := some .output } }
-    | _ => scan rest { acc with globals := { acc.globals with skeleton := some .input } }
   | a :: rest =>
     if isOption a then
       let values := rest.takeWhile (!isOption ·)
@@ -416,23 +371,10 @@ partial def scan (args : List String) (acc : RawArgs) : Except CliError RawArgs 
       scan (rest.drop values.length) { acc with params := acc.params.push param }
     else scan rest { acc with positionals := acc.positionals.push a }
 
-/-- サブコマンドの `Param` に照らして、`--cli-input-json` とコマンドラインの値を `Args` にする。
-先に `--cli-input-json` を読み、コマンドラインの値で上書きし、最後に必須のパラメータがそろっているかを確かめる。 -/
+/-- サブコマンドの `Param` に照らして、コマンドラインの値を `Args` にする。
+同じパラメータを 2 度渡したときは後の値を使い、最後に必須のパラメータがそろっているかを確かめる。 -/
 def bindParams (s : Subcommand) (raw : RawArgs) : IO (Except CliError Args) := do
   let mut values : Array (String × Json) := #[]
-  if let some src := raw.globals.cliInputJson then
-    let text ← readValue src
-    match Json.parse text with
-    | .error e => return .error (usageError s!"--cli-input-json の JSON を解析できない: {e}")
-    | .ok (.obj fields) =>
-      for (k, v) in fields do
-        match s.params.find? (·.key == k) with
-        | none => return .error (usageError s!"--cli-input-json のキー {k} は {s.name} のパラメータではない")
-        | some p =>
-          match checkValue p v with
-          | .ok v' => values := values.push (k, v')
-          | .error e => return .error e
-    | .ok _ => return .error (usageError "--cli-input-json には JSON のオブジェクトを渡す")
   for (name, vs) in raw.params do
     let (p?, negated) : Option Param × Bool :=
       match s.params.find? (·.name == name) with
@@ -462,7 +404,7 @@ def bindParams (s : Subcommand) (raw : RawArgs) : IO (Except CliError Args) := d
   return .ok ⟨values⟩
 
 /-- 引数の全体を解析し、グローバルオプションと、するべきこと（`Invocation`）を返す。
-位置引数をコマンド表に照らしてコマンドとサブコマンドを決め、`help` と `--generate-cli-skeleton` を先に扱う。 -/
+位置引数をコマンド表に照らしてコマンドとサブコマンドを決め、`help` を先に扱う。 -/
 def parse (commands : List Command) (argv : List String) :
     IO (Except CliError (Globals × Invocation)) := do
   match scan argv {} with
@@ -489,7 +431,6 @@ def parse (commands : List Command) (argv : List String) :
             match rest' with
             | ["help"] => return .ok (g, .help [c, s])
             | [] =>
-              if let some k := g.skeleton then return .ok (g, .skeleton cmd sub k)
               match ← bindParams sub raw with
               | .ok args => return .ok (g, .run cmd sub args)
               | .error e => return .error e

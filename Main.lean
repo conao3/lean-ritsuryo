@@ -2,15 +2,14 @@ module
 
 import Ritsuryo.Cli.Commands
 import Ritsuryo.Cli.Render
-import Ritsuryo.Cli.Query
 
 /-!
 # `ritsuryo` の入口
 
-引数をコマンド表（`Ritsuryo.Cli.commands`）で解析し、バージョン・`help`・雛形を出すか、サブコマンドを実行する。
-実行の結果は `--query` の JMESPath で絞り込み、`--output` の形式で標準出力に出す。
+引数をコマンド表（`Ritsuryo.Cli.commands`）で解析し、バージョンか `help` を出すか、サブコマンドを実行する。
+実行の結果は `--output` の形式で標準出力に出す。
 
-終了コードは、0 が成功、252 がコマンドやパラメータの誤り（`--query` の式の誤りを含む）、254 が計算の扱う範囲の外の入力、
+終了コードは、0 が成功、252 がコマンドやパラメータの誤り、254 が計算の扱う範囲の外の入力、
 255 がそれ以外の失敗（ファイルを読めないなど）になる。誤りは `ritsuryo: error: ...` の形で標準エラーに出す。
 -/
 
@@ -52,29 +51,13 @@ def run (argv : List String) : IO UInt32 := do
           | some sub => IO.print (subcommandHelp cmd sub)
           | none => return 252
         return 0
-    | .skeleton _ sub kind =>
-      let j := match kind with
-        | .input => inputSkeleton sub
-        | .output => sub.outputSkeleton
-      IO.println (Json.pretty j)
-      return 0
     | .run _ sub args =>
       if g.debug then
         IO.eprintln (Json.pretty (.obj args.values))
       match sub.run args with
       | .ok j =>
-        match g.query with
-        | none =>
-          IO.print (render g.output (pascalCase sub.name) j)
-          return 0
-        | some q =>
-          match Query.apply q j with
-          | .ok j' =>
-            IO.print (render g.output (pascalCase sub.name) j')
-            return 0
-          | .error e =>
-            IO.eprintln s!"ritsuryo: error: {e}"
-            return 252
+        IO.print (render g.output (pascalCase sub.name) j)
+        return 0
       | .error e =>
         IO.eprintln s!"ritsuryo: error: {e.message}"
         return e.code

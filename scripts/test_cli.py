@@ -3,8 +3,7 @@
 使い方: python3 scripts/test_cli.py <ritsuryo の実行ファイルのパス>
 
 CASES の各行は、名前、引数、期待する終了コード、出力の JSON のパス（Result.ExpiryDate など）と期待する値。
-そのほか --cli-input-json と file:// の読み込み、--query、--generate-cli-skeleton、
---output text・table、help、--version を個別に確かめる。
+そのほか file:// の読み込み、--output text・table、help、--version を個別に確かめる。
 """
 
 import json
@@ -183,12 +182,6 @@ CASES = [
         {"Result.Deadline": "2026-03-16"},
     ),
     (
-        "malformed query",
-        "holiday list-holidays --year 2026 --query Result.[",
-        252,
-        {},
-    ),
-    (
         "nonexistent date",
         "age compute-age --birth-date 2001-02-29 --as-of 2002-01-01",
         254,
@@ -209,7 +202,7 @@ CASES = [
     ),
     (
         "missing input file",
-        "age compute-age --cli-input-json file:///nonexistent.json",
+        "age compute-age --birth-date file:///nonexistent.txt --as-of 2026-01-01",
         255,
         {},
     ),
@@ -253,28 +246,8 @@ def main():
                 failures.append(f"{name}: SchemaVersion missing")
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
-        (tmp / "in.json").write_text(
-            json.dumps({"BirthDate": "2008-04-01", "Age": 6}), encoding="utf-8"
-        )
         (tmp / "bd.txt").write_text("2000-01-01\n", encoding="utf-8")
         checks = [
-            (
-                "cli-input-json",
-                ["age", "get-attainment-date", "--cli-input-json", "file://in.json"],
-                "2014-03-31",
-            ),
-            (
-                "cli-input-json overridden by a parameter",
-                [
-                    "age",
-                    "get-attainment-date",
-                    "--cli-input-json",
-                    "file://in.json",
-                    "--age",
-                    "7",
-                ],
-                "2015-03-31",
-            ),
             (
                 "file:// value",
                 [
@@ -294,52 +267,11 @@ def main():
                 failures.append(f"{name}: exit {p.returncode}: {p.stderr.strip()}")
             elif json.loads(p.stdout)["Result"]["AttainmentDate"] != value:
                 failures.append(f"{name}: unexpected {p.stdout}")
-    queries = [
-        (
-            "query a field",
-            "holiday list-holidays --year 2026 --query Result.Holidays[0].Name",
-            "元日",
-        ),
-        (
-            "query a filter",
-            "holiday list-holidays --year 2026 "
-            "--query Result.Holidays[?Class=='substitute-holiday'].Date",
-            ["2026-05-06"],
-        ),
-        (
-            "query a function",
-            "holiday list-holidays --year 2026 --query length(Result.Holidays)",
-            18,
-        ),
-    ]
-    for name, cmd, value in queries:
-        p = run(cmd.split())
-        if p.returncode != 0:
-            failures.append(f"{name}: exit {p.returncode}: {p.stderr.strip()}")
-        elif json.loads(p.stdout) != value:
-            failures.append(f"{name}: unexpected {p.stdout}")
     text = run(
         "age get-attainment-date --birth-date 2008-02-29 --age 18 --output text".split()
     )
     if text.stdout.splitlines()[0] != "RESULT\t2026-02-28":
         failures.append(f"text output starts with {text.stdout.splitlines()[0]!r}")
-    skeleton = json.loads(
-        run("period compute-expiry --generate-cli-skeleton input".split()).stdout
-    )
-    if "EventDate" not in skeleton or "RolloverRule" not in skeleton:
-        failures.append("input skeleton lacks PascalCase keys")
-    out_skeleton = json.loads(
-        run("period compute-expiry --generate-cli-skeleton output".split()).stdout
-    )
-    if set(out_skeleton) != {
-        "Result",
-        "Steps",
-        "Basis",
-        "Assumptions",
-        "Data",
-        "SchemaVersion",
-    }:
-        failures.append(f"output skeleton keys: {sorted(out_skeleton)}")
     text = run(
         "age compute-age --birth-date 2008-02-29 --as-of 2026-02-28 --output text".split()
     )
@@ -357,7 +289,7 @@ def main():
         p = run(path)
         if p.returncode != 0 or not p.stdout:
             failures.append(f"{' '.join(path)}: exit {p.returncode}")
-    total = len(CASES) + len(checks) + len(queries) + 9
+    total = len(CASES) + len(checks) + 7
     for f in failures:
         print(f"  FAIL {f}", file=sys.stderr)
     print(f"cli: {total - len(failures)} passed, {len(failures)} failed")

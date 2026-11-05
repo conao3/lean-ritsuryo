@@ -65,7 +65,7 @@ Nix を使う場合は `nix run github:conao3/lean-ritsuryo -- help` で実行�
 
 どのコマンドも `Result`、`Steps`、`Basis`、`Assumptions`、`Data`、`SchemaVersion` を持つ JSON を出す（[出力](#出力)を参照）。
 
-以下の例では `--query` で出力の一部だけを取り出している。出力は CLI が出したものをそのまま写している。
+以下の例では出力を `jq` に渡して一部だけを取り出している。出力はコマンドが出したものをそのまま写している。
 
 ### 所得税
 
@@ -145,13 +145,13 @@ $ ritsuryo income-tax compute-tax --tax-year 2026 --taxable-income 7000000
 2027 年分からは、復興特別所得税が 1.1%、防衛特別所得税が 1% になる。
 
 ```console
-$ ritsuryo income-tax compute-tax --tax-year 2027 --taxable-income 7000000 --query Result
+$ ritsuryo income-tax compute-tax --tax-year 2027 --taxable-income 7000000 | jq .Result
 {
-    "IncomeTax": 974000,
-    "ReconstructionTax": 10714,
-    "DefenseTax": 9740,
-    "Total": 994454,
-    "Payable": 994400
+  "IncomeTax": 974000,
+  "ReconstructionTax": 10714,
+  "DefenseTax": 9740,
+  "Total": 994454,
+  "Payable": 994400
 }
 ```
 
@@ -171,45 +171,45 @@ $ echo $?
 課税価格の合計から基礎控除を引いた 1 億 5,200 万円を法定相続分で分け、各人の取得金額に第16条の税率をかける。これらの税額を足した額が相続税の総額になる。
 
 ```console
-$ ritsuryo inheritance-tax compute-total-tax --taxable-value-total 200000000 --spouse --biological-children 2 --query '{Result: Result, Steps: Steps}'
+$ ritsuryo inheritance-tax compute-total-tax --taxable-value-total 200000000 --spouse --biological-children 2 | jq '{Result, Steps}'
 {
-    "Result": {
-        "TotalTax": 27000000
-    },
-    "Steps": {
-        "TaxableValueTotal": 200000000,
-        "HeirCount": 3,
-        "BasicDeduction": 48000000,
-        "TaxableEstate": 152000000,
-        "Heirs": [
-            {
-                "Heir": "spouse",
-                "Share": "1/2",
-                "Acquired": 76000000,
-                "Tax": 15800000
-            },
-            {
-                "Heir": "child",
-                "Share": "1/4",
-                "Acquired": 38000000,
-                "Tax": 5600000
-            },
-            {
-                "Heir": "child",
-                "Share": "1/4",
-                "Acquired": 38000000,
-                "Tax": 5600000
-            }
-        ],
-        "TotalBeforeRounding": 27000000
-    }
+  "Result": {
+    "TotalTax": 27000000
+  },
+  "Steps": {
+    "TaxableValueTotal": 200000000,
+    "HeirCount": 3,
+    "BasicDeduction": 48000000,
+    "TaxableEstate": 152000000,
+    "Heirs": [
+      {
+        "Heir": "spouse",
+        "Share": "1/2",
+        "Acquired": 76000000,
+        "Tax": 15800000
+      },
+      {
+        "Heir": "child",
+        "Share": "1/4",
+        "Acquired": 38000000,
+        "Tax": 5600000
+      },
+      {
+        "Heir": "child",
+        "Share": "1/4",
+        "Acquired": 38000000,
+        "Tax": 5600000
+      }
+    ],
+    "TotalBeforeRounding": 27000000
+  }
 }
 ```
 
 次は相続人が配偶者、全血の兄弟姉妹 2 人、半血の兄弟姉妹 1 人のときの法定相続分である（民法 第900条第3号、第4号）。
 
 ```console
-$ ritsuryo inheritance-tax compute-statutory-shares --spouse --full-siblings 2 --half-siblings 1 --query 'Result.Shares[].[Heir, Share]' --output text
+$ ritsuryo inheritance-tax compute-statutory-shares --spouse --full-siblings 2 --half-siblings 1 | jq -r '.Result.Shares[] | [.Heir, .Share] | @tsv'
 spouse	3/4
 full-sibling	1/10
 full-sibling	1/10
@@ -221,23 +221,23 @@ half-sibling	1/20
 適格請求書に記載する消費税額を、税率ごとに求める。品目は `--items` に shorthand 構文で渡す。税込価額で渡すときは `--price-basis inclusive` を付ける。
 
 ```console
-$ ritsuryo consumption-tax compute-invoice-tax --items Price=1000,Rate=standard Price=540,Rate=reduced --rounding half-up --query Result
+$ ritsuryo consumption-tax compute-invoice-tax --items Price=1000,Rate=standard Price=540,Rate=reduced --rounding half-up | jq .Result
 {
-    "Taxes": [
-        {
-            "Rate": "standard",
-            "RatePercent": 10,
-            "PriceTotal": 1000,
-            "Tax": 100
-        },
-        {
-            "Rate": "reduced",
-            "RatePercent": 8,
-            "PriceTotal": 540,
-            "Tax": 43
-        }
-    ],
-    "TotalTax": 143
+  "Taxes": [
+    {
+      "Rate": "standard",
+      "RatePercent": 10,
+      "PriceTotal": 1000,
+      "Tax": 100
+    },
+    {
+      "Rate": "reduced",
+      "RatePercent": 8,
+      "PriceTotal": 540,
+      "Tax": 43
+    }
+  ],
+  "TotalTax": 143
 }
 ```
 
@@ -248,27 +248,21 @@ $ ritsuryo consumption-tax compute-invoice-tax --items Price=1000,Rate=standard 
 区間ごとの額は一円未満を切り捨て、その合計から百円未満を切り捨てる。
 
 ```console
-$ ritsuryo delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16 --payment-date 2026-07-31 --query Result
+$ ritsuryo delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16 --payment-date 2026-07-31 | jq .Result
 {
-    "DelinquencyTax": 23600
+  "DelinquencyTax": 23600
 }
-$ ritsuryo delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16 --payment-date 2026-07-31 --output table --query Steps.Segments
-+----------------------------------------------------------------------+
-|                              ComputeTax                              |
-+----------------------------------------------------------------------+
-|  From       | To         | Days | Rate | Band              | Amount  |
-|+--------------------------------------------------------------------+|
-|  2026-03-17 | 2026-05-16 | 61   | 2.8% | within-two-months | 4679    |
-|  2026-05-17 | 2026-07-31 | 76   | 9.1% | after-two-months  | 18947   |
-+----------------------------------------------------------------------+
+$ ritsuryo delinquency-tax compute-tax --tax 1000000 --legal-due-date 2026-03-16 --payment-date 2026-07-31 | jq -c '.Steps.Segments[]'
+{"From":"2026-03-17","To":"2026-05-16","Days":61,"Rate":"2.8%","Band":"within-two-months","Amount":4679}
+{"From":"2026-05-17","To":"2026-07-31","Days":76,"Rate":"9.1%","Band":"after-two-months","Amount":18947}
 ```
 
 次は納期限を 2026-03-16 から 2026-06-15 まで延長したときの利子税である。
 
 ```console
-$ ritsuryo interest-tax compute-tax --tax 1000000 --from-date 2026-03-16 --to-date 2026-06-15 --query Result
+$ ritsuryo interest-tax compute-tax --tax 1000000 --from-date 2026-03-16 --to-date 2026-06-15 | jq .Result
 {
-    "InterestTax": 3200
+  "InterestTax": 3200
 }
 ```
 
@@ -277,9 +271,9 @@ $ ritsuryo interest-tax compute-tax --tax 1000000 --from-date 2026-03-16 --to-da
 割合は税額のうち 50 万円までの部分が 15%、300 万円までの部分が 20%、300 万円を超える部分が 30% である（国税通則法 第66条第1項、第3項）。
 
 ```console
-$ ritsuryo penalty-tax compute-tax --kind no-return --tax 4000000 --query Result
+$ ritsuryo penalty-tax compute-tax --kind no-return --tax 4000000 | jq .Result
 {
-    "PenaltyTax": 875000
+  "PenaltyTax": 875000
 }
 ```
 
@@ -288,48 +282,48 @@ $ ritsuryo penalty-tax compute-tax --kind no-return --tax 4000000 --query Result
 2026-12-15 に判決の送達を受けたときの控訴期間である。2 週間の末日は 2026-12-29 だが、この日は年末年始に当たる。そのため、民事訴訟法 第95条第3項により、末日は 2027-01-04 に繰り下がる。
 
 ```console
-$ ritsuryo deadline compute-appeal-deadline --served-date 2026-12-15 --query '{Result: Result, RolledOver: Steps.RolledOverDays[].Date}'
+$ ritsuryo deadline compute-appeal-deadline --served-date 2026-12-15 | jq '{Result, RolledOver: [.Steps.RolledOverDays[].Date]}'
 {
-    "Result": {
-        "Deadline": "2027-01-04",
-        "Period": "控訴期間",
-        "Invariable": true
-    },
-    "RolledOver": [
-        "2026-12-29",
-        "2026-12-30",
-        "2026-12-31",
-        "2027-01-01",
-        "2027-01-02",
-        "2027-01-03"
-    ]
+  "Result": {
+    "Deadline": "2027-01-04",
+    "Period": "控訴期間",
+    "Invariable": true
+  },
+  "RolledOver": [
+    "2026-12-29",
+    "2026-12-30",
+    "2026-12-31",
+    "2027-01-01",
+    "2027-01-02",
+    "2027-01-03"
+  ]
 }
 ```
 
 2026-01-31 から 1 か月の期間は 2026-02-28 に満了する。応当日にあたる 2026-02-31 は存在しないので、その月の末日に満了する（民法 第143条第2項ただし書）。
 
 ```console
-$ ritsuryo period compute-expiry --event-date 2026-01-31 --months 1 --query Result
+$ ritsuryo period compute-expiry --event-date 2026-01-31 --months 1 | jq .Result
 {
-    "ExpiryDate": "2026-02-28"
+  "ExpiryDate": "2026-02-28"
 }
 ```
 
 2026 年分の所得税の確定申告期限は、次のとおりである（所得税法 第120条第1項）。
 
 ```console
-$ ritsuryo deadline get-income-tax-return-deadline --tax-year 2026 --query Result
+$ ritsuryo deadline get-income-tax-return-deadline --tax-year 2026 | jq .Result
 {
-    "Deadline": "2027-03-15"
+  "Deadline": "2027-03-15"
 }
 ```
 
 2 月 29 日に生まれた人は、2 月 28 日に 18 歳に達する（年齢計算ニ関スル法律、民法 第143条）。
 
 ```console
-$ ritsuryo age get-attainment-date --birth-date 2008-02-29 --age 18 --query Result
+$ ritsuryo age get-attainment-date --birth-date 2008-02-29 --age 18 | jq .Result
 {
-    "AttainmentDate": "2026-02-28"
+  "AttainmentDate": "2026-02-28"
 }
 ```
 
@@ -338,7 +332,7 @@ $ ritsuryo age get-attainment-date --birth-date 2008-02-29 --age 18 --query Resu
 2027 年の休日を、種別と根拠の条文とともに一覧にする。
 
 ```console
-$ ritsuryo holiday list-holidays --year 2027 --output text --query Result.Holidays
+$ ritsuryo holiday list-holidays --year 2027 | jq -r '.Result.Holidays[] | [.Date, .Name, .Class, .Article] | @tsv'
 2027-01-01	元日	national-holiday	国民の祝日に関する法律 第2条
 2027-01-11	成人の日	national-holiday	国民の祝日に関する法律 第2条
 2027-02-11	建国記念の日	national-holiday	国民の祝日に関する法律 第2条
@@ -360,15 +354,13 @@ $ ritsuryo holiday list-holidays --year 2027 --output text --query Result.Holida
 
 ### ファイルからの入力
 
-`--generate-cli-skeleton input` を付けると、すべてのパラメータを並べた JSON の雛形を出力する。`--cli-input-json` を使うとパラメータを JSON で渡せる。JSON に書かなかったパラメータは既定値になる。
+値が `file://` で始まるときは、そのファイルを読む。`--items` のような構造体のリストは JSON のファイルから読める。
 
 ```console
-$ cat input.json
-{"EventDate": "2026-12-15", "Weeks": 2, "RolloverRule": "civil-procedure-95"}
-$ ritsuryo period compute-expiry --cli-input-json file://input.json --query Result
-{
-    "ExpiryDate": "2027-01-04"
-}
+$ cat items.json
+[{"Price": 1000, "Rate": "standard"}, {"Price": 540, "Rate": "reduced"}]
+$ ritsuryo consumption-tax compute-invoice-tax --items file://items.json --rounding half-up | jq .Result.TotalTax
+143
 ```
 
 ## 開発
@@ -396,12 +388,7 @@ $ ritsuryo [global options] <command> <subcommand> [--parameter value ...]
 - パラメータ名は `--kebab-case`。真偽値は `--flag` / `--no-flag`、リストは空白区切りで並べる。
 - 値が `file://` で始まるときは、そのファイルを読む。
 - 構造体のリストは shorthand 構文（`--items Price=1000,Rate=standard Price=540,Rate=reduced`）か JSON で渡す。
-- `--cli-input-json` は、パラメータ名を PascalCase にしたキーの JSON オブジェクト 1 つで、すべてのパラメータを受け取る。
-- `--generate-cli-skeleton input|output` は入力または出力の雛形を出力する。
-- `--query` は JMESPath の式で出力の一部を取り出す。
 - `help` はどの階層でも使える（`ritsuryo help`、`ritsuryo period help`、`ritsuryo period compute-expiry help`）。
-
-`--query` で使える JMESPath の構文は識別子、サブ式、添字、スライス、リストとオブジェクトの射影、flatten、フィルタ、multi-select のリストとハッシュ、パイプ、比較、`||` `&&` `!`、リテラルである。使える関数は `length` `keys` `values` `sort` `reverse` `max` `min` `sum` `join` `contains` `starts_with` `ends_with` `type` `to_string` `not_null` である。
 
 | command | subcommand | 計算するもの |
 |---|---|---|
@@ -541,7 +528,7 @@ Ritsuryo/
     Consumption.lean                 消費税法 29 条、施行令 70 条の 10
     Delinquency.lean, Penalty.lean   延滞税と利子税、加算税
     Proofs/                          TAX、RND、CON、DEL、PEN、INH の証明
-  Cli/                               JSON、引数の解析、--query、出力の整形、コマンドの表
+  Cli/                               JSON、引数の解析、出力の整形、コマンドの表
 Main.lean                            ritsuryo の CLI
 BasisReport.lean                     lake exe basis-report
 Tests/, TestMain.lean                lake test

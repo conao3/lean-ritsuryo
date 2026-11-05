@@ -44,7 +44,6 @@ public import Ritsuryo.Tax.Proofs.Penalty
 public import Ritsuryo.Cli.Json
 public import Ritsuryo.Cli.Core
 public import Ritsuryo.Cli.Render
-public import Ritsuryo.Cli.Query
 public import Ritsuryo.Cli.Envelope
 public import Ritsuryo.Cli.Period
 public import Ritsuryo.Cli.Tax
