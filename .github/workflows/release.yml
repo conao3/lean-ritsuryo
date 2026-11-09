@@ -40,7 +40,7 @@ jobs:
           mkdir -p dist
           tar -czf "dist/ritsuryo-${{ matrix.target }}.tar.gz" -C .lake/build/bin ritsuryo \
             -C "$GITHUB_WORKSPACE" LICENSE README.md README-ja.md
-      - uses: actions/upload-artifact@v4.6.2
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: ritsuryo-${{ matrix.target }}
           path: dist/ritsuryo-${{ matrix.target }}.tar.gz
