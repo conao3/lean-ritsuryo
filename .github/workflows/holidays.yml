@@ -14,11 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: cachix/install-nix-action@v31.11.3
+      - uses: cachix/install-nix-action@v31.11.5
       - run: nix develop --command make fetch-holidays
       - run: nix develop --command make basis
       - run: nix develop --command make check
-      - uses: peter-evans/create-pull-request@v8.1.2
+      - uses: peter-evans/create-pull-request@v8.1.3
         with:
           branch: holiday-data
           commit-message: Update the Cabinet Office holiday CSV
