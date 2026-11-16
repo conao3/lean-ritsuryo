@@ -30,6 +30,11 @@ The [2025 basic-deduction experiment](docs/interpretation.md#basic-deduction-exp
 also composes income deductions with the tax calculation, searches income boundaries, and
 rechecks eight reversals with kernel proofs. Run it with `nix develop --command lake exe tax-cliffs`.
 
+There is also a [literal read-as experiment](docs/interpretation.md#literal-read-as-experiments):
+nine kernel-checked theorems reproduce a spelling mismatch across two Immigration Act revisions
+and an order-dependent substitution chain in the Fishery Industry Cooperative Act. These are
+claims about the encoded texts, with source fixtures and a checked encoding step.
+
 It covers these provisions:
 
 - Periods: 民法 第140条〜第143条, 年齢計算ニ関スル法律, 国税通則法 第10条, 民事訴訟法 第95条, 第285条, 第313条, 第332条, 所得税法 第120条

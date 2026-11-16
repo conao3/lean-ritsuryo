@@ -4,6 +4,32 @@ This document records how each provision is read into a definition. The proofs s
 
 Statute texts are quoted from e-Gov 法令検索. The revision IDs are in the module docstrings.
 
+## Literal read-as experiments
+
+`LegalText.Rewrite` checks literal substitutions over Unicode code point lists. The source nodes,
+complete paragraph texts, revision IDs, retrieval URLs and document hashes are in
+`data/read-as-cases.json`. `scripts/gen_read_as.py --check` checks node-to-text consistency and
+regenerates the Lean strings and code point lists. The encoding step is checked by Python;
+the nine theorems about the resulting lists are checked by the Lean kernel with `decide +kernel`.
+The replacement function matches the first occurrence and reports a missing match explicitly.
+This is a literal-text model, and legal interpretation remains a separate question.
+
+Immigration Act article 13(7) quotes a passage of article 41(1) using `但し`. The 2024-04-01
+revision of article 41(1) matches it; the 2024-06-10 revision uses `ただし`. The two paragraph
+texts differ exactly by that spelling substitution. The quoted passage still appears with the
+old spelling in article 13(7) in revision `326CO0000000319_20261001_508AC0000000032`.
+The kernel checks the successful old match, failed new match, spelling-only change, and successful
+match after applying the same spelling change to the needle. This establishes a literal mismatch,
+not a conclusion about detention authority or the validity of the statute.
+
+Fishery Industry Cooperative Act articles 92(5) and 105(5) refer to article 34-2(3) **as read by
+article 70(3)**. The original contains `前条第十項及び第十二項`; article 70(3) inserts `本文`.
+The resulting `前条第十項本文及び第十二項` is the string the outer provisions replace with
+`前条第十項本文`. Checking the outer substitution against the unmodified original would produce
+a false alarm. The kernel checks the quotations, intermediate match, final text and the
+noncommutativity of the two substitutions. This is an example of an explicitly ordered read-as
+chain, not an ambiguity in the law.
+
 ## Basic deduction experiment (2025 residents)
 
 `Tax.BasicDeduction2025` combines 所得税法86条 with 租税特別措置法41条の16の2第1項第1号.

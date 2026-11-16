@@ -1,6 +1,7 @@
 module
 
 public import Ritsuryo.Law
+public import Ritsuryo.LegalText.Rewrite
 meta import Ritsuryo.Basis
 public import Ritsuryo.Calendar.Date
 public import Ritsuryo.Calendar.Days

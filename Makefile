@@ -3,6 +3,7 @@ check:
 	nix fmt -- --ci
 	python3 scripts/lint.py
 	python3 scripts/gen_holidays.py --check
+	python3 scripts/gen_read_as.py --check
 	lake build
 	lake test
 	python3 scripts/test_cli.py .lake/build/bin/ritsuryo
