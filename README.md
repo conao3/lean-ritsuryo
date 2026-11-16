@@ -26,6 +26,10 @@
 
 lean-ritsuryo is a library and CLI that computes periods and taxes under Japanese law, written in Lean 4. The library's functions come with proofs that they compute what the provisions say, and the CLI computes by calling them. The Lake package and the CLI are both named `ritsuryo`.
 
+The [2025 basic-deduction experiment](docs/interpretation.md#basic-deduction-experiment-2025-residents)
+also composes income deductions with the tax calculation, searches income boundaries, and
+rechecks eight reversals with kernel proofs. Run it with `nix develop --command lake exe tax-cliffs`.
+
 It covers these provisions:
 
 - Periods: 民法 第140条〜第143条, 年齢計算ニ関スル法律, 国税通則法 第10条, 民事訴訟法 第95条, 第285条, 第313条, 第332条, 所得税法 第120条

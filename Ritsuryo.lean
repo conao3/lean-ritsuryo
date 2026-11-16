@@ -32,6 +32,7 @@ public import Ritsuryo.Holiday.Article2Check
 public import Ritsuryo.Tax.Rounding
 public import Ritsuryo.Tax.Progressive
 public import Ritsuryo.Tax.Income
+public import Ritsuryo.Tax.BasicDeduction2025
 public import Ritsuryo.Tax.Inheritance
 public import Ritsuryo.Tax.Consumption
 public import Ritsuryo.Tax.Delinquency

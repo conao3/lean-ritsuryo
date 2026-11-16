@@ -1,6 +1,6 @@
 name = "ritsuryo"
 version = "0.5.0"
-defaultTargets = ["Ritsuryo", "ritsuryo"]
+defaultTargets = ["Ritsuryo", "ritsuryo", "tax-cliffs"]
 testDriver = "tests"
 
 [leanOptions]
@@ -24,3 +24,7 @@ root = "TestMain"
 [[lean_exe]]
 name = "basis-report"
 root = "BasisReport"
+
+[[lean_exe]]
+name = "tax-cliffs"
+root = "TaxCliffs"

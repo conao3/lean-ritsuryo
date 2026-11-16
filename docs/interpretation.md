@@ -4,6 +4,34 @@ This document records how each provision is read into a definition. The proofs s
 
 Statute texts are quoted from e-Gov 法令検索. The revision IDs are in the module docstrings.
 
+## Basic deduction experiment (2025 residents)
+
+`Tax.BasicDeduction2025` combines 所得税法86条 with 租税特別措置法41条の16の2第1項第1号.
+The revisions are `340AC0000000033_20251201_507AC0000000013` and
+`332AC0000000026_20251201_507AC0000000013`. `spec` adds the statutory base and supplement;
+`spec_eq_table` proves equality with the 2025 column of [NTA No.1199](https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1199.htm)
+for every income amount. `tax_eq_table` extends equality to the composed tax calculation for every
+income and other-deduction amount. These proofs establish agreement between the two formal
+definitions; their correspondence with the legal sources requires human review.
+
+Inputs are income after expenses or employment-income deductions, with total income equal to
+ordinary aggregate income, and all retirement, timber and separately taxed income set to zero.
+The search also sets other income deductions and tax credits to zero. It measures income minus
+ordinary income tax, before reconstruction surtax, local taxes, social insurance or final payment
+rounding. Residence and eligibility are assumptions. The namespace fixes the year to 2025.
+
+`nix develop --command lake exe tax-cliffs` compares every adjacent pair from 0/1 yen to
+25,000,000/25,000,001 yen and emits cases where tax increases by at least 1,000 yen. This cutoff
+separates large jumps from smaller rounding steps for this experiment. `certified_jumps` and
+`certified_reversals` recheck the eight witnesses in the Lean kernel. The finite native scan supplies
+coverage evidence; the witness theorems establish the individual results. `largeJump_sound`
+proves that every positive detector result implies a reversal, for any input income.
+
+`first_cliff_recovery` proves that at 1,320,000 yen, every increase from 1 through 3,649 yen reduces
+income after ordinary tax. `first_cliff_recovered` proves equality at an increase of 3,650 yen.
+These are known deduction discontinuities; interpreting a discontinuity as a drafting defect
+requires a separate legal and policy assessment.
+
 ## 民法 第140条〜第143条
 
 | Provision | Definition | Reading |

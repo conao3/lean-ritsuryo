@@ -6,6 +6,7 @@ check:
 	lake build
 	lake test
 	python3 scripts/test_cli.py .lake/build/bin/ritsuryo
+	python3 scripts/test_tax_cliffs.py .lake/build/bin/tax-cliffs
 	lake exe basis-report --check
 	lake exe basis-report | diff -u docs/basis.md -
 
