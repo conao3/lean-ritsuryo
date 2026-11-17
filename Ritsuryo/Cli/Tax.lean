@@ -69,6 +69,10 @@ def computeIncomeTax (a : Args) : Except CliError Json := do
     (if year ≥ 2027 && rp > 0 then
       [("所得税法等の一部を改正する法律（令和8年法律第12号）", "附則第88条第1項")] else []) ++
     (if dp > 0 then [(defenseLaw, "第5条の5第1項"), (defenseLaw, "第5条の9")] else [])
+  let rounding : String × String :=
+    if dp > 0 then (defenseLaw, "第5条の22第2項")
+    else if rp > 0 then (reconstructionLaw, "第24条第2項")
+    else ("国税通則法", "第119条第1項")
   return envelope
     (.obj #[("IncomeTax", .num res.incomeTax), ("ReconstructionTax", .num res.reconstructionTax),
       ("DefenseTax", .num res.defenseTax), ("Total", .num res.total),
@@ -78,8 +82,7 @@ def computeIncomeTax (a : Args) : Except CliError Json := do
       ("TaxableRetirementIncome", incomeLine r res.retirementBase res.retirementTax),
       ("TaxableTimberIncome", incomeLine t res.timberBase res.timberTax),
       ("ReconstructionRate", .str (tenthsPercent rp)), ("DefenseRate", .str (tenthsPercent dp))])
-    ([("所得税法", "第89条第1項"), ("国税通則法", "第118条第1項")] ++ special ++
-      [("国税通則法", "第119条第1項")])
+    ([("所得税法", "第89条第1項"), ("国税通則法", "第118条第1項")] ++ special ++ [rounding])
     ["入力は所得控除の後の課税総所得金額・課税退職所得金額・課税山林所得金額で、千円未満を切り捨てて税率表を当てる",
       "課税山林所得金額は、五分の一の金額に税率表を当てて五を掛ける（5 分 5 乗）",
       "基準所得税額は第89条の税額とし、税額控除（配当控除・外国税額控除など）はないものとする",

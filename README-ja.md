@@ -125,9 +125,9 @@ $ ritsuryo income-tax compute-tax --tax-year 2026 --taxable-income 7000000
             "LawId": "423AC0000000117"
         },
         {
-            "Law": "国税通則法",
-            "Article": "第119条第1項",
-            "LawId": "337AC0000000066"
+            "Law": "東日本大震災からの復興のための施策を実施するために必要な財源の確保に関する特別措置法",
+            "Article": "第24条第2項",
+            "LawId": "423AC0000000117"
         }
     ],
     "Assumptions": [

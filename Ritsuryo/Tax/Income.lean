@@ -137,9 +137,16 @@ structure Result where
   payable : Nat
   deriving Repr
 
-/-- `year` 年分の所得税と特別所得税。`payable` は合計の百円未満を切り捨てた額（国税通則法第119条第1項）で、
-税額控除と源泉徴収税額がないものとした申告納税額に当たる。 -/
-@[ritsuryo_basis "所得税法" "第89条第1項", ritsuryo_basis "国税通則法" "第119条第1項"]
+/-- `year` 年分の所得税と特別所得税。`payable` は合計の百円未満を切り捨てた額で、
+税額控除と源泉徴収税額がないものとした申告納税額に当たる。
+所得税と特別所得税の確定金額は、国税通則法第119条の規定にかかわらず、合計額で端数を計算する。
+復興特別所得税があるときは復興財源確保法第24条第2項、防衛特別所得税もあるときは防衛財源確保法第5条の22第2項が
+これを定める。どちらもない年分は国税通則法第119条第1項による。 -/
+@[ritsuryo_basis "所得税法" "第89条第1項", ritsuryo_basis "国税通則法" "第119条第1項",
+  ritsuryo_basis "東日本大震災からの復興のための施策を実施するために必要な財源の確保に関する特別措置法"
+    "第24条第2項",
+  ritsuryo_basis "我が国の防衛力の抜本的な強化等のために必要な財源の確保に関する特別措置法"
+    "第5条の22第2項"]
 def compute (year ordinary retirement timber : Nat) : Result :=
   let it := incomeTax ordinary retirement timber
   let rt := surtax (reconstructionPermille year) it

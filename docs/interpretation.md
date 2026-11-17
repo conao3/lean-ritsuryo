@@ -139,7 +139,7 @@ The three provisions say the period ends on "the next day" (その翌日) and do
 
 - 第118条第1項: the 課税標準 is floored to 1,000 yen (所得税 inputs: 課税総所得金額, 課税退職所得金額, 課税山林所得金額).
 - 第118条第3項: the tax amount on which 附帯税 (延滞税, 利子税, 加算税) is computed is floored to 10,000 yen. For 過少申告加算税 第65条第2項 the part that gets the extra 5% is floored separately; for 無申告加算税 the 累積納付税額 is floored too.
-- 第119条第1項: the final amount is floored to 100 yen. For 所得税 the CLI's `Payable` floors the sum of 所得税, 復興特別所得税, and 防衛特別所得税, before withholding and prepayments.
+- 第119条第1項: the final amount is floored to 100 yen. For 所得税 the CLI's `Payable` floors the sum of 所得税, 復興特別所得税, and 防衛特別所得税, before withholding and prepayments. The sum is the unit because 復興財源確保法 第24条第2項 (and, from the 2027 tax year, 防衛財源確保法 第5条の22第2項) sets 第119条 aside for these taxes and floors their total to 100 yen; the CLI's `Basis` names that provision for the year.
 - 第119条第4項: 附帯税 are floored to 100 yen and dropped when below 1,000 yen (5,000 yen for 加算税).
 
 ## 所得税法 第89条
